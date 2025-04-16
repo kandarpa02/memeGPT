@@ -1,0 +1,11 @@
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.npy
+data/
+__pycache__/
+*.log
+venv/
+.ipynb_checkpoints/
+.env
