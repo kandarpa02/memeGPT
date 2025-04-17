@@ -22,7 +22,7 @@ with open(sys.argv[1], 'r') as f:
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-epochs = config["training"]["epochs"]
+epochs = int(config["training"]["epochs"])
 model_name = "gpt2"
 model = Model(model_name)
 tokenizer = text_tokenizer(model_name)()
@@ -36,11 +36,11 @@ mlflow.log_param("learning_rate", config["training"]["lr"])
 mlflow.log_param("batch_size", int(sys.argv[3]))
 mlflow.log_param("optimizer", config["training"]["optimizer"])
 
-lr = int(config["training"]["lr"])
-alpha = config["training"]["alpha"]
+lr = float(config["training"]["lr"])
+alpha = float(config["training"]["alpha"])
 betas = tuple(config["training"]["betas"])
-weight_decay = config["training"]["weight_decay"]
-momentum = config["training"]["momentum"]
+weight_decay = float(config["training"]["weight_decay"])
+momentum = float(config["training"]["momentum"])
 
 C = Checkpoints()
 _data = Load_data(DATA_PATH, tokenizer)
@@ -48,10 +48,10 @@ _data = Load_data(DATA_PATH, tokenizer)
 train_loader, _, val_loader = _data.dataloader(batch_size=int(sys.argv[3]))
 
 model.freeze(
-    num=config["training"]["num"],
-    ln_=config["training"]["ln"], 
-    wte = config["training"]["wte"],
-    wpe = config["training"]["wpe"]
+    num=int(config["training"]["num"]),
+    ln_=int(config["training"]["ln"]), 
+    wte = int(config["training"]["wte"]),
+    wpe = int(config["training"]["wpe"])
 )
 
 optimzers = {
