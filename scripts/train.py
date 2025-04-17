@@ -55,7 +55,13 @@ model.freeze(
 )
 
 total_params, trainable_params = model.num_params()
-print(f"Total params: {total_params}, Trainable params: {trainable_params}")
+print(f"Total params: {total_params}")
+
+model.lora(
+    r = int(config['lora']['r']),
+    alpha_l= int(config['lora']['alpha_l']),
+    dropout= int(config['lora']['dropout']),
+)
 
 optimzers = {
     'AdamW': _opt.AdamWOptimizer(model, lr, betas, weight_decay),
