@@ -60,7 +60,7 @@ optimzers = {
     'RMSprop': _opt.RMSpropOptimizer(model, lr, alpha, weight_decay)
 }
 
-optimizer = optimzers[config["training"]["optimizer"]]
+optimizer = optimzers[config["training"]["optimizer"]]()
 
 if torch.cuda.device_count()>1:
     model = DataParallel(model())
@@ -75,7 +75,7 @@ def trainer(
         model_inp,
         mix_precision=config["training"]["precision"],
         epochs=epochs,
-        load_checkpoint_=config["training"]["chekpoint_load"],
+        load_checkpoint_=config["training"]["checkpoint_load"],
         save_checkpoint_=config["training"]["checkpoint_save"]
     ):
 
