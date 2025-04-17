@@ -63,12 +63,23 @@ class Model:
         trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return total, trainable
 
-    def load_weights(self, path, map_location = 'cuda'):
+    def load_weights(self, path, map_location='cuda'):
         try:
-            state_dict = torch.load(path, map_location = map_location)
+            checkpoint = torch.load(path, map_location=map_location)
+            
+            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+                state_dict = checkpoint['model_state_dict']
+            else:
+                state_dict = checkpoint
+
             clean_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+
             self.model.load_state_dict(clean_state_dict)
 
         except Exception as e:
-            print(f"Failed to load weights {e}")
+            print(f"Failed to load weights: {e}")
+            return None
+
+        return self
+
     
