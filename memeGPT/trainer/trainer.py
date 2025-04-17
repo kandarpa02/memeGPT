@@ -12,7 +12,7 @@ class Trainer:
     def process(self, batch):
         self._optimizer.zero_grad()
         if self.mix_precision == True:
-            with autocast():
+            with autocast(device_type=self.device):
                 output = self.model(**batch)
                 loss = output.loss
             
