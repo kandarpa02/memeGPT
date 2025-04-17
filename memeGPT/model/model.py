@@ -1,6 +1,8 @@
 from transformers import GPT2LMHeadModel
 import torch
 from peft import get_peft_model, LoraConfig, TaskType
+from peft import PeftModel
+from transformers import AutoModelForCausalLM
 
 class Model:
     def __init__(self, model_name):
@@ -63,23 +65,12 @@ class Model:
         trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return total, trainable
 
-    def load_weights(self, path, map_location='cuda'):
+    def load_weights(self, path, base_model_name="distilgpt2", map_location='cuda'):
         try:
-            checkpoint = torch.load(path, map_location=map_location)
-            
-            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-                state_dict = checkpoint['model_state_dict']
-            else:
-                state_dict = checkpoint
-
-            clean_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
-
-            self.model.load_state_dict(clean_state_dict)
-
+            base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
+            self.model = PeftModel.from_pretrained(base_model, path, device_map=map_location)
+            print("LoRA weights loaded successfully.")
         except Exception as e:
-            print(f"Failed to load weights: {e}")
-            return None
-
-        return self
-
+            print(f"Failed to load LoRA weights: {e}")
+        return self 
     
