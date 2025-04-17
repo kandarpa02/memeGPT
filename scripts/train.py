@@ -128,7 +128,6 @@ def trainer(
         t1 = time.time()
         print(f"\nEpoch {epoch+1}/{epochs} - Training Loss: {total_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
 
-    # Log final model after training
     mlflow.pytorch.log_model(model_inp, "model")
     mlflow.end_run()
 
