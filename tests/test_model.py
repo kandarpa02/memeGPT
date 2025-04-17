@@ -28,14 +28,14 @@ class TestEvaluator:
 
 if __name__ == "__main__":
 
-    tokenizer = text_tokenizer("gpt2")()
-    model = Model("gpt2")()
+    tokenizer = text_tokenizer("distilgpt2")()
+    model = Model("distilgpt2")
     path = sys.argv[1]
     weights_path = sys.argv[2]
     _data = Load_data(path, tokenizer)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = model.load_weights(path= weights_path, map_location=device)
-    #model = model()
+    model = model()
     _, test_loader, _ = _data.dataloader()
     T_e = TestEvaluator(model, test_loader, device)
 
