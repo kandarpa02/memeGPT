@@ -42,8 +42,10 @@ class Model:
                 param.requires_grad = True
     
     def num_params(self):
-        return sum(p.numel() for p in self.model.parameters())
-    
+        total = sum(p.numel() for p in self.model.parameters())
+        trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        return total, trainable
+
     def load_weights(self, path, map_location = 'cuda'):
         try:
             state_dict = torch.load(path, map_location = map_location)

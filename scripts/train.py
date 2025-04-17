@@ -53,7 +53,7 @@ model.freeze(
     wte = int(config["training"]["wte"]),
     wpe = int(config["training"]["wpe"])
 )
-
+print(f"Total params: {}")
 optimzers = {
     'AdamW': _opt.AdamWOptimizer(model, lr, betas, weight_decay),
     'SGD': _opt.SGDOptimizer(model, lr, momentum, weight_decay),
@@ -128,7 +128,7 @@ def trainer(
 
         t1 = time.time()
         print(f"\nEpoch {epoch+1}/{epochs} - Training Loss: {total_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
-
+        print(f"Umm training is done senpai >_< !!!!!!!")
     mlflow.pytorch.log_model(model_inp, "model")
     mlflow.end_run()
 
