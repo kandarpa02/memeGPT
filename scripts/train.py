@@ -53,7 +53,10 @@ model.freeze(
     wte = int(config["training"]["wte"]),
     wpe = int(config["training"]["wpe"])
 )
-print(f"Total params: {}")
+
+total_params, trainable_params = model.num_params()
+print(f"Total params: {total_params}, Trainable params: {trainable_params}")
+
 optimzers = {
     'AdamW': _opt.AdamWOptimizer(model, lr, betas, weight_decay),
     'SGD': _opt.SGDOptimizer(model, lr, momentum, weight_decay),

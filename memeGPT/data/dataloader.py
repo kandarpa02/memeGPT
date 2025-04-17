@@ -15,7 +15,7 @@ class Load_data:
         self.df = pd.read_csv(self.path)
         self.text = self.df['text'].tolist() 
 
-    def dataloader(self, max_len=128, batch_size=8, num_workers=4):
+    def dataloader(self, max_len=512, batch_size=8, num_workers=4):
         cleaned_text = [preprocess(text) for text in self.text]
         dataset = Dataset.from_dict({"text": cleaned_text})
         self.tokenizer.pad_token = self.tokenizer.eos_token
