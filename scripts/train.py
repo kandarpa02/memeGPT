@@ -23,7 +23,7 @@ with open(sys.argv[1], 'r') as f:
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 epochs = int(config["training"]["epochs"])
-model_name = "gpt2"
+model_name = "distilgpt2"
 model = Model(model_name)
 tokenizer = text_tokenizer(model_name)()
 DATA_PATH = sys.argv[2]
