@@ -36,7 +36,7 @@ mlflow.log_param("learning_rate", config["training"]["lr"])
 mlflow.log_param("batch_size", int(sys.argv[3]))
 mlflow.log_param("optimizer", config["training"]["optimizer"])
 
-lr = config["training"]["lr"]
+lr = int(config["training"]["lr"])
 alpha = config["training"]["alpha"]
 betas = tuple(config["training"]["betas"])
 weight_decay = config["training"]["weight_decay"]
