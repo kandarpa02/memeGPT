@@ -11,7 +11,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = Model("distilgpt2")
 tokenizer = text_tokenizer("distilgpt2")
 
-path = '/home/kandarpa-sarkar/Downloads/memeGPT2/ver1.pt'
+path = sys.argv[1]
 
 model.load_weights(path, map_location=device)
 
@@ -26,10 +26,10 @@ text_generator = pipeline(
 
 # model.config.pad_token_id = model.config.eos_token_id
 
-prompt = f"prompt:{sys.argv[1]}\n meme:"
+prompt = f"prompt:{sys.argv[2]}\n meme:"
 outputs = text_generator(
     prompt,
-    max_length=32,
+    max_length=128,
     temperature=0.8,
     top_k=40,
     top_p=0.95,
