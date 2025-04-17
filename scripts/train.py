@@ -93,7 +93,7 @@ def trainer(
         optimizer_ = optimizer
         model_inp = model
         epochs_ = epochs
-        best_val_loss = float('inf')
+        best_val_loss = 0
     else:
         model_inp, optimizer_, epochs_, best_val_loss = C.load_checkpoints(model, optimizer, load_checkpoint_)
     
@@ -137,7 +137,7 @@ def trainer(
 
         t1 = time.time()
         print(f"\nEpoch {epoch+1}/{epochs} - Training Loss: {total_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
-        print(f"Umm training is done senpai >_< !!!!!!!")
+    print(f"Umm training is done senpai >_< !!!!!!!")
     mlflow.pytorch.log_model(model_inp, "model")
     mlflow.end_run()
 
