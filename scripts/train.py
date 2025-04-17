@@ -89,18 +89,19 @@ def trainer(
         save_checkpoint_=config["training"]["checkpoint_save"]
     ):
 
-    if load_checkpoint_ == None:
+    if load_checkpoint_ is None:
         optimizer_ = optimizer
         model_inp = model
-        epochs_ = epochs
-        best_val_loss = 0
+        start_epoch = 0
+        best_val_loss = float('inf')
     else:
-        model_inp, optimizer_, epochs_, best_val_loss = C.load_checkpoints(model, optimizer, load_checkpoint_)
-    
+        model_inp, optimizer_, start_epoch, best_val_loss = C.load_checkpoints(model, optimizer, load_checkpoint_)
+        print(f"Resuming training from epoch {start_epoch} with best_val_loss = {best_val_loss}")
+
     Train = Trainer(model_inp, optimizer_, mix_precision, device=device)
 
     model_inp.train()
-    for epoch in range(epochs_):
+    for epoch in range(start_epoch, epochs):
         t0 = time.time()
         total_loss = 0
         val_loss = 0
@@ -114,7 +115,6 @@ def trainer(
             current_val_loss = validation.val_loss()
             val_loss += current_val_loss
 
-            # Logging metrics for each step using MLflow
             mlflow.log_metric("train_loss", Train.loss.item(), step=epoch * len(train_loader) + step)
             mlflow.log_metric("val_loss", current_val_loss, step=epoch * len(train_loader) + step)
 
@@ -123,23 +123,26 @@ def trainer(
             )
             sys.stdout.flush()
 
-            avg_val_loss = val_loss / len(train_loader)
+        avg_val_loss = val_loss / len(train_loader)
 
-            if avg_val_loss < best_val_loss:
-                best_val_loss = avg_val_loss
-                C.save_checkpoints(
-                    model=model_inp,
-                    optimizer=optimizer_,
-                    epoch=epoch,
-                    loss=best_val_loss,
-                    path=save_checkpoint_
-                )
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            C.save_checkpoints(
+                model=model_inp,
+                optimizer=optimizer_,
+                epoch=epoch + 1,
+                loss=best_val_loss,
+                path=save_checkpoint_
+            )
+            print(f"\n Checkpoint saved at epoch {epoch+1} with val_loss: {best_val_loss:.4f}")
 
         t1 = time.time()
         print(f"\nEpoch {epoch+1}/{epochs} - Training Loss: {total_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
+
     print(f"Umm training is done senpai >_< !!!!!!!")
     mlflow.pytorch.log_model(model_inp, "model")
     mlflow.end_run()
+
 
 if __name__ == "__main__":
     trainer(
