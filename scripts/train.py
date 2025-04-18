@@ -60,6 +60,7 @@ model.lora(
     r=int(config['lora'].get('r', 8)),
     alpha_l=int(config['lora'].get('alpha_l', 16)),
     dropout=float(config['lora'].get('dropout', 0.5)),
+    target_modules=config['lora'].get('modules', ["c_attn", "c_proj"])
 )
 
 optimizers = {
