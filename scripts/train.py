@@ -1,5 +1,4 @@
 # run in this order: >>> python train.py --config --data --batch_size --epochs
-
 import torch
 from torch.nn import DataParallel
 from memeGPT.model.model import Model
@@ -9,7 +8,6 @@ from memeGPT.trainer.trainer import Trainer
 from scripts.evaluate import Validation
 import time, sys, warnings
 import yaml
-from memeGPT.data.dataloader import Load_data
 from memeGPT.utils.checkpoints import Checkpoints
 import mlflow
 import mlflow.pytorch
@@ -27,7 +25,6 @@ model = Model(model_name)
 tokenizer = text_tokenizer(model_name)()
 DATA_PATH = sys.argv[2]
 
-# Logging parameters using MLflow
 mlflow.start_run()
 mlflow.log_param("model_name", model_name)
 mlflow.log_param("epochs", epochs)
@@ -42,9 +39,18 @@ weight_decay = float(config["training"].get("weight_decay", 0.01))
 momentum = float(config["training"].get("momentum", 0.9))
 
 C = Checkpoints()
-_data = Load_data(DATA_PATH, tokenizer)
 
-train_loader, _, val_loader = _data.dataloader(batch_size=int(sys.argv[3]))
+# Load tokenized data from .pt file
+full_tokenized_data = torch.load(DATA_PATH)
+
+train_on_full = config["training"].get("train_on_full", False)
+
+if train_on_full:
+    train_loader = torch.utils.data.DataLoader(full_tokenized_data["train"], batch_size=int(sys.argv[3]), shuffle=True)
+    val_loader = torch.utils.data.DataLoader(full_tokenized_data["train"], batch_size=int(sys.argv[3]), shuffle=False)
+else:
+    train_loader = torch.utils.data.DataLoader(full_tokenized_data["train"], batch_size=int(sys.argv[3]), shuffle=True)
+    val_loader = torch.utils.data.DataLoader(full_tokenized_data["val"], batch_size=int(sys.argv[3]), shuffle=False)
 
 model.freeze(
     num=int(config["training"].get("num", 0)),
