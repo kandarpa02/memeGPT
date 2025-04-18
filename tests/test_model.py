@@ -28,10 +28,11 @@ class TestEvaluator:
 
 if __name__ == "__main__":
 
-    tokenizer = text_tokenizer("distilgpt2")()
-    model = Model("distilgpt2")
-    path = sys.argv[1]
-    weights_path = sys.argv[2]
+    model_name = sys.argv[1]
+    tokenizer = text_tokenizer(model_name)()
+    model = Model(model_name)
+    path = sys.argv[2]
+    weights_path = sys.argv[3]
     _data = Load_data(path, tokenizer)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = model.load_weights(path= weights_path, map_location=device)
@@ -46,5 +47,5 @@ if __name__ == "__main__":
     print(f"Perplexity: {perplexity:.4f}")
 
     # How to use this: 
-    #     in terminal >> python test_model.py data_path weights_path
+    #     in terminal >> python model_name test_model.py data_path weights_path
     

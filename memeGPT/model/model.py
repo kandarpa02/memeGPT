@@ -65,7 +65,8 @@ class Model:
         trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return total, trainable
 
-    def load_weights(self, path, base_model_name="distilgpt2", map_location='cuda'):
+    def load_weights(self, path, base_model_name, map_location='cuda'):
+        base_model_name = self.model_name
         try:
             base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
             self.model = PeftModel.from_pretrained(base_model, path, device_map=map_location)
