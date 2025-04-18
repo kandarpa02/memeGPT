@@ -1,4 +1,3 @@
-
 # run in this order: >>> python train.py --config --data --batch_size --epochs
 
 import torch
@@ -22,7 +21,7 @@ with open(sys.argv[1], 'r') as f:
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-epochs = int(config["training"]["epochs"])
+epochs = int(config["training"].get("epochs", 5))
 model_name = "distilgpt2"
 model = Model(model_name)
 tokenizer = text_tokenizer(model_name)()
@@ -32,15 +31,15 @@ DATA_PATH = sys.argv[2]
 mlflow.start_run()
 mlflow.log_param("model_name", model_name)
 mlflow.log_param("epochs", epochs)
-mlflow.log_param("learning_rate", config["training"]["lr"])
+mlflow.log_param("learning_rate", config["training"].get("lr", 1e-4))
 mlflow.log_param("batch_size", int(sys.argv[3]))
-mlflow.log_param("optimizer", config["training"]["optimizer"])
+mlflow.log_param("optimizer", config["training"].get("optimizer", "AdamW"))
 
-lr = float(config["training"]["lr"])
-alpha = float(config["training"]["alpha"])
-betas = tuple(config["training"]["betas"])
-weight_decay = float(config["training"]["weight_decay"])
-momentum = float(config["training"]["momentum"])
+lr = float(config["training"].get("lr", 1e-4))
+alpha = float(config["training"].get("alpha", 0.99))
+betas = tuple(config["training"].get("betas", [0.9, 0.999]))
+weight_decay = float(config["training"].get("weight_decay", 0.01))
+momentum = float(config["training"].get("momentum", 0.9))
 
 C = Checkpoints()
 _data = Load_data(DATA_PATH, tokenizer)
@@ -48,31 +47,34 @@ _data = Load_data(DATA_PATH, tokenizer)
 train_loader, _, val_loader = _data.dataloader(batch_size=int(sys.argv[3]))
 
 model.freeze(
-    num=int(config["training"]["num"]),
-    ln_=int(config["training"]["ln"]), 
-    wte = int(config["training"]["wte"]),
-    wpe = int(config["training"]["wpe"])
+    num=int(config["training"].get("num", 0)),
+    ln_=int(config["training"].get("ln", 0)), 
+    wte=int(config["training"].get("wte", 0)),
+    wpe=int(config["training"].get("wpe", 0))
 )
 
 total_params, trainable_params = model.num_params()
 print(f"Total params: {total_params}")
 
 model.lora(
-    r = int(config['lora']['r']),
-    alpha_l= int(config['lora']['alpha_l']),
-    dropout= int(config['lora']['dropout']),
+    r=int(config['lora'].get('r', 8)),
+    alpha_l=int(config['lora'].get('alpha_l', 16)),
+    dropout=float(config['lora'].get('dropout', 0.5)),
 )
 
-optimzers = {
+optimizers = {
     'AdamW': _opt.AdamWOptimizer(model, lr, betas, weight_decay),
     'SGD': _opt.SGDOptimizer(model, lr, momentum, weight_decay),
     'RMSprop': _opt.RMSpropOptimizer(model, lr, alpha, weight_decay)
 }
 
-optimizer = optimzers[config["training"]["optimizer"]]
+optimizer_name = config["training"].get("optimizer", "AdamW")
+optimizer = optimizers.get(optimizer_name)
+if optimizer is None:
+    raise ValueError(f"Invalid optimizer: {optimizer_name}")
 optimizer = optimizer()
 
-if torch.cuda.device_count()>1:
+if torch.cuda.device_count() > 1:
     model = DataParallel(model())
 else:
     model = model()
@@ -83,14 +85,14 @@ validation = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=
 
 def trainer(
         model_inp,
-        mix_precision=config["training"]["precision"],
+        mix_precision=config["training"].get("precision", True),
         epochs=epochs,
-        load_checkpoint_=config["training"]["checkpoint_load"],
-        save_checkpoint_=config["training"]["checkpoint_save"]
+        load_checkpoint_=config["training"].get("checkpoint_load"),
+        save_checkpoint_=config["training"].get("checkpoint_save")
     ):
 
-    override_lr = int(config["training"]["override_lr"])
-    override_opt = config["training"]["override_optimizer"]
+    override_lr = config["training"].get("override_lr")
+    override_opt = config["training"].get("override_optimizer")
 
     if load_checkpoint_ is None:
         optimizer_ = optimizer
@@ -103,15 +105,15 @@ def trainer(
 
         if override_opt:
             print(f" Overriding optimizer with {override_opt}")
-            opt_fn = optimzers.get(override_opt)
+            opt_fn = optimizers.get(override_opt)
             if opt_fn is None:
                 raise ValueError(f"Unknown optimizer override: {override_opt}")
             optimizer_ = opt_fn()
-        
-        elif override_lr is not None:
-            print(f"🔧 Overriding learning rate with {override_lr}")
+
+        if override_lr is not None:
+            print(f" Overriding learning rate with {override_lr}")
             for param_group in optimizer_.param_groups:
-                param_group['lr'] = override_lr
+                param_group['lr'] = float(override_lr)
 
     Train = Trainer(model_inp, optimizer_, mix_precision, device=device)
 
@@ -143,7 +145,7 @@ def trainer(
         C.save_checkpoints(
             model=model_inp,
             optimizer=optimizer_,
-            epoch = epoch + 1,
+            epoch=epoch + 1,
             loss=avg_val_loss,
             path=save_checkpoint_
         )
