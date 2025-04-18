@@ -136,7 +136,7 @@ def trainer(
             mlflow.log_metric("val_loss", current_val_loss, step=epoch * len(train_loader) + step)
 
             sys.stdout.write(
-                f"\rEpoch {epoch+1}/{epochs} | Step {step}/{len(train_loader)} | Loss: {Train.loss.item():.4f}"
+                f"\rEpoch {epoch+1}/{epochs_cp + epochs} | Step {step}/{len(train_loader)} | Loss: {Train.loss.item():.4f}"
             )
             sys.stdout.flush()
 
