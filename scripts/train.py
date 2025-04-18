@@ -89,7 +89,7 @@ def trainer(
         save_checkpoint_=config["training"]["checkpoint_save"]
     ):
 
-    override_lr = config["training"].get("override_lr", None)
+    override_lr = int(config["training"].get("override_lr", None))
     override_opt = config["training"].get("override_optimizer", None)
 
     if load_checkpoint_ is None:
