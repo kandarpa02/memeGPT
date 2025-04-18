@@ -89,17 +89,18 @@ def trainer(
         save_checkpoint_=config["training"]["checkpoint_save"]
     ):
 
-    if load_checkpoint_ == None:
+    if load_checkpoint_ is None:
         optimizer_ = optimizer
         model_inp = model
-        best_val_loss = float('inf')
+        _val_loss = 0
+        epochs_cp = 0
     else:
-        model_inp, optimizer_, epochs_cp, best_val_loss = C.load_checkpoints(model, optimizer, load_checkpoint_)
-    
+        model_inp, optimizer_, epochs_cp, _val_loss = C.load_checkpoints(model, optimizer, load_checkpoint_)
+        print(f"🔁 Resuming training from epoch {epochs_cp} with val_loss = {_val_loss}")
     Train = Trainer(model_inp, optimizer_, mix_precision, device=device)
 
     model_inp.train()
-    for epoch in range(epochs):
+    for epoch in range(epochs_cp, epochs_cp + epochs):
         t0 = time.time()
         total_loss = 0
         val_loss = 0
@@ -122,21 +123,20 @@ def trainer(
             )
             sys.stdout.flush()
 
-            avg_val_loss = val_loss / len(train_loader)
+        avg_val_loss = val_loss / len(train_loader)
 
-            if avg_val_loss < best_val_loss:
-                best_val_loss = avg_val_loss
-                C.save_checkpoints(
-                    model=model_inp,
-                    optimizer=optimizer_,
-                    epoch=epoch + epochs_cp,
-                    loss=best_val_loss,
-                    path=save_checkpoint_
-                )
+        C.save_checkpoints(
+            model=model_inp,
+            optimizer=optimizer_,
+            epoch = epoch + 1,
+            loss=avg_val_loss,
+            path=save_checkpoint_
+        )
 
         t1 = time.time()
-        print(f"\nEpoch {epoch+1}/{epochs} - Training Loss: {total_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
+        print(f"\nEpoch {epoch+1}/{epochs_cp + epochs} - Training Loss: {total_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
     print(f"Umm training is done senpai >_< !!!!!!!")
+
     mlflow.pytorch.log_model(model_inp, "model")
     mlflow.end_run()
 
