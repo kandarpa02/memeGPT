@@ -89,6 +89,9 @@ def trainer(
         save_checkpoint_=config["training"]["checkpoint_save"]
     ):
 
+    override_lr = config["training"].get("override_lr", None)
+    override_opt = config["training"].get("override_optimizer", None)
+
     if load_checkpoint_ is None:
         optimizer_ = optimizer
         model_inp = model
@@ -96,7 +99,20 @@ def trainer(
         epochs_cp = 0
     else:
         model_inp, optimizer_, epochs_cp, _val_loss = C.load_checkpoints(model, optimizer, load_checkpoint_)
-        print(f"🔁 Resuming training from epoch {epochs_cp} with val_loss = {_val_loss}")
+        print(f" Resuming training from epoch {epochs_cp} with val_loss = {_val_loss}")
+
+        if override_opt:
+            print(f" Overriding optimizer with {override_opt}")
+            opt_fn = optimzers.get(override_opt)
+            if opt_fn is None:
+                raise ValueError(f"Unknown optimizer override: {override_opt}")
+            optimizer_ = opt_fn()
+        
+        elif override_lr is not None:
+            print(f"🔧 Overriding learning rate with {override_lr}")
+            for param_group in optimizer_.param_groups:
+                param_group['lr'] = override_lr
+
     Train = Trainer(model_inp, optimizer_, mix_precision, device=device)
 
     model_inp.train()
@@ -114,7 +130,6 @@ def trainer(
             current_val_loss = validation.val_loss()
             val_loss += current_val_loss
 
-            # Logging metrics for each step using MLflow
             mlflow.log_metric("train_loss", Train.loss.item(), step=epoch * len(train_loader) + step)
             mlflow.log_metric("val_loss", current_val_loss, step=epoch * len(train_loader) + step)
 
@@ -135,6 +150,7 @@ def trainer(
 
         t1 = time.time()
         print(f"\nEpoch {epoch+1}/{epochs_cp + epochs} - Training Loss: {total_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
+
     print(f"Umm training is done senpai >_< !!!!!!!")
 
     mlflow.pytorch.log_model(model_inp, "model")
