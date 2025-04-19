@@ -18,7 +18,7 @@ class Model:
         self.model = GPT2LMHeadModel.from_pretrained(
             model_name,
             quantization_config=bnb_config,
-            device_map="auto"
+            device_map="cuda" if torch.cuda.is_available() else "cpu"
         )
 
         self.model = prepare_model_for_kbit_training(self.model)
