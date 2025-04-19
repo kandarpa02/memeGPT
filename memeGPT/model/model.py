@@ -33,21 +33,29 @@ class Model:
         return self.model.parameters()
 
     def freeze(self, num=0, ln_=0, wte=0, wpe=0):
+        
+        def safe_requires_grad(param, flag):
+            if param.dtype.is_floating_point or param.is_complex():
+                param.requires_grad = flag
+            else:
+                print(f"Skipping non-float param: {param.shape}, dtype={param.dtype}")
+
         for param in self.model.parameters():
-            param.requires_grad = False
+            safe_requires_grad(param, False)
 
         for param in self.model.transformer.ln_f.parameters():
-            param.requires_grad = ln_ == 1
+            safe_requires_grad(param, ln_ == 1)
 
         for param in self.model.transformer.wte.parameters():
-            param.requires_grad = wte == 1
+            safe_requires_grad(param, wte == 1)
 
         for param in self.model.transformer.wpe.parameters():
-            param.requires_grad = wpe == 1
+            safe_requires_grad(param, wpe == 1)
 
         for block in self.model.transformer.h[num:]:
             for param in block.parameters():
-                param.requires_grad = True
+                safe_requires_grad(param, True)
+
 
     def lora(self, r=8, alpha_l=16, dropout=0.05, bias="none", target_modules= ["c_attn", "c_proj"]):
         try:
