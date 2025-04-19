@@ -33,12 +33,10 @@ class Model:
         return self.model.parameters()
 
     def freeze(self, num=0, ln_=0, wte=0, wpe=0):
-        
+
         def safe_requires_grad(param, flag):
             if param.dtype.is_floating_point or param.is_complex():
                 param.requires_grad = flag
-            else:
-                print(f"Skipping non-float param: {param.shape}, dtype={param.dtype}")
 
         for param in self.model.parameters():
             safe_requires_grad(param, False)
