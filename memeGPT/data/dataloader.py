@@ -1,52 +1,74 @@
-from torch.utils.data import DataLoader
-from datasets import Dataset 
+from torch.utils.data import Dataset
 import pandas as pd
 import re
+import torch
+import os
 
 def preprocess(text):
     text = re.sub(r'[^a-zA-Z0-9\s.,!?;:()"\'-]', '', text)  
     text = ' '.join(text.split())
     return text
 
-class Load_data:
-    def __init__(self, path, tokenizer):
-        self.path = path
+class ChunkedTokenizerSaver:
+    def __init__(self, tokenizer, chunk_size=10000, max_len=512):
         self.tokenizer = tokenizer
-        self.df = pd.read_csv(self.path)
-        self.text = self.df['text'].tolist() 
-
-    def dataloader(self, max_len=126, batch_size=8, num_workers=4, split=True):
-        cleaned_text = [preprocess(text) for text in self.text]
-        dataset = Dataset.from_dict({"text": cleaned_text})
+        self.chunk_size = chunk_size
+        self.max_len = max_len
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        def tokenize_(txt):
+    def tokenize_and_save(self, raw_data_path, save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+        reader = pd.read_csv(raw_data_path, chunksize=self.chunk_size)
+
+        for i, chunk in enumerate(reader):
+            print(f"🔹 Processing chunk {i}...")
+            texts = [preprocess(t) for t in chunk["text"].tolist()]
             tokens = self.tokenizer(
-                txt['text'],
-                padding='max_length',
+                texts,
+                padding="max_length",
                 truncation=True,
-                max_length=max_len,
+                max_length=self.max_len,
+                return_tensors="pth"
             )
-            tokens["labels"] = tokens["input_ids"].copy()
-            return tokens
-        
-        tokenized_dataset = dataset.map(tokenize_, batched=True)
-        tokenized_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+            tokens["labels"] = tokens["input_ids"].clone()
 
-        if split:
-            split_dataset = tokenized_dataset.train_test_split(test_size=0.2)
-            test_val_split = split_dataset['test'].train_test_split(test_size=0.5)
+            chunk_path = os.path.join(save_dir, f"chunk_{i}.pth")
+            torch.save(tokens, chunk_path)
+            print(f"✅ Saved: {chunk_path}")
 
-            train_dataset = split_dataset['train']
-            test_dataset = test_val_split['train']
-            val_dataset = test_val_split['test']
 
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-            test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+class T3nsorLoader(Dataset):
+    def __init__(self, chunk_folder):
+        self.chunk_files = sorted([
+            os.path.join(chunk_folder, f)
+            for f in os.listdir(chunk_folder)
+            if f.endswith(".pth")
+        ])
+        self.sample_index = []
+        self.chunk_data = None
+        self.current_chunk_id = -1
 
-            return train_loader, test_loader, val_loader
+        for chunk_id, file in enumerate(self.chunk_files):
+            data = torch.load(file)
+            num_samples = data["input_ids"].shape[0]
+            self.sample_index.extend([(chunk_id, i) for i in range(num_samples)])
 
-        else:
-            full_loader = DataLoader(tokenized_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-            return full_loader
+    def __len__(self):
+        return len(self.sample_index)
+
+    def __getitem__(self, idx):
+        chunk_id, local_idx = self.sample_index[idx]
+
+        if chunk_id != self.current_chunk_id:
+            # Load new chunk only if necessary
+            self.chunk_data = torch.load(self.chunk_files[chunk_id])
+            self.current_chunk_id = chunk_id
+
+        item = {
+            key: self.chunk_data[key][local_idx]
+            for key in self.chunk_data
+        }
+        return item
+    
+
+
