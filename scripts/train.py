@@ -181,7 +181,5 @@ def trainer(
     mlflow.end_run()
 
 if __name__ == "__main__":
-    trainer(
-        model,
-        epochs=int(sys.argv[4])
-    )
+    trainer(model)
+
