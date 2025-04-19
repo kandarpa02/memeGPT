@@ -8,6 +8,7 @@ setup(
         "torch>=2.0.0",
         "datasets",
         "transformers",
+        "bitsandbytes",
         "numpy",
         "pyyaml",
         "mlflow",
