@@ -51,8 +51,8 @@ if train_on_full:
     Td = T3nsorLoader(train_data)
     Vd = T3nsorLoader(val_data)
 
-    train_loader = DataLoader(Td, batch_size, shuffle= True)
-    val_loader = DataLoader(Vd, batch_size, shuffle= False) 
+    train_loader = DataLoader(Td, batch_size, shuffle= True, num_workers = 4, pin_memory = True, prefetch_factor = 2)
+    val_loader = DataLoader(Vd, batch_size, shuffle= False, num_workers = 4, pin_memory = True, prefetch_factor = 2) 
 
 else:
     train_data = config["data"]["train"]
@@ -61,8 +61,8 @@ else:
     Td = T3nsorLoader(train_data)
     Vd = T3nsorLoader(val_data)
 
-    train_loader = DataLoader(Td, batch_size, shuffle= True)
-    val_loader = DataLoader(Vd, batch_size, shuffle= False) 
+    train_loader = DataLoader(Td, batch_size, shuffle= True, num_workers = 4, pin_memory = True, prefetch_factor = 2)
+    val_loader = DataLoader(Vd, batch_size, shuffle= False, num_workers = 4, pin_memory = True, prefetch_factor = 2) 
 
 
 
