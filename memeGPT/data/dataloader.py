@@ -11,7 +11,7 @@ def preprocess(text):
     return text
 
 class ChunkedTokenizerSaver:
-    def __init__(self, tokenizer, chunk_size=10000, max_len=512):
+    def __init__(self, tokenizer, chunk_size=10000, max_len=128):
         self.tokenizer = tokenizer
         self.chunk_size = chunk_size
         self.max_len = max_len

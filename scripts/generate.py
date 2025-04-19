@@ -30,7 +30,7 @@ text_generator = pipeline(
 prompt = f"prompt:{sys.argv[3]}\n meme:"
 outputs = text_generator(
     prompt,
-    max_length=512,
+    max_length=128,
     temperature=0.8,
     top_k=40,
     top_p=0.95,
