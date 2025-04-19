@@ -57,7 +57,7 @@ class Model:
                 lora_alpha=alpha_l,
                 lora_dropout=dropout,
                 bias=bias,
-                target_modules=["c_attn", "c_proj"]
+                target_modules=target_modules
             )
             self.model = get_peft_model(self.model, peft_config)
             print(" QLoRA adapters injected.")
