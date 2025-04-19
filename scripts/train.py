@@ -1,10 +1,12 @@
-# run in this order: >>> python train.py --config --data --batch_size --epochs
+# run in this order: >>> python train.py --config --batch_size --epochs
 import torch
 from torch.nn import DataParallel
+from torch.utils.data import DataLoader
 from memeGPT.model.model import Model
 from memeGPT.tokenizer.tokenizer import text_tokenizer
 import memeGPT.trainer.optimizer as _opt
 from memeGPT.trainer.trainer import Trainer
+from memeGPT.data.dataloader import T3nsorLoader
 from scripts.evaluate import Validation
 import time, sys, warnings
 import yaml
@@ -19,17 +21,16 @@ with open(sys.argv[1], 'r') as f:
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-epochs = int(config["training"].get("epochs", 5))
+epochs = int(sys.argv[3])
 model_name = config["training"]["model"]
 model = Model(model_name)
 tokenizer = text_tokenizer(model_name)()
-DATA_PATH = sys.argv[2]
 
 mlflow.start_run()
 mlflow.log_param("model_name", model_name)
 mlflow.log_param("epochs", epochs)
 mlflow.log_param("learning_rate", config["training"].get("lr", 1e-4))
-mlflow.log_param("batch_size", int(sys.argv[3]))
+mlflow.log_param("batch_size", int(sys.argv[2]))
 mlflow.log_param("optimizer", config["training"].get("optimizer", "AdamW"))
 
 lr = float(config["training"].get("lr", 1e-4))
@@ -38,19 +39,33 @@ betas = tuple(config["training"].get("betas", [0.9, 0.999]))
 weight_decay = float(config["training"].get("weight_decay", 0.01))
 momentum = float(config["training"].get("momentum", 0.9))
 
-C = Checkpoints()
 
-# Load tokenized data from .pt file
-full_tokenized_data = torch.load(DATA_PATH)
+batch_size= int(sys.argv[2])
 
-train_on_full = config["training"].get("train_on_full", False)
+train_on_full = config["data"].get("train_on_full",False)
 
 if train_on_full:
-    train_loader = torch.utils.data.DataLoader(full_tokenized_data["train"], batch_size=int(sys.argv[3]), shuffle=True)
-    val_loader = torch.utils.data.DataLoader(full_tokenized_data["train"], batch_size=int(sys.argv[3]), shuffle=False)
+    train_data = config["data"]["train"]
+    val_data = config["data"]["val"]
+
+    Td = T3nsorLoader(train_data)
+    Vd = T3nsorLoader(val_data)
+
+    train_loader = DataLoader(Td, batch_size, shuffle= True)
+    val_loader = DataLoader(Vd, batch_size, shuffle= False) 
+
 else:
-    train_loader = torch.utils.data.DataLoader(full_tokenized_data["train"], batch_size=int(sys.argv[3]), shuffle=True)
-    val_loader = torch.utils.data.DataLoader(full_tokenized_data["val"], batch_size=int(sys.argv[3]), shuffle=False)
+    train_data = config["data"]["train"]
+    val_data = config["data"]["train"]
+
+    Td = T3nsorLoader(train_data)
+    Vd = T3nsorLoader(val_data)
+
+    train_loader = DataLoader(Td, batch_size, shuffle= True)
+    val_loader = DataLoader(Vd, batch_size, shuffle= False) 
+
+
+
 
 model.freeze(
     num=int(config["training"].get("num", 0)),
@@ -85,10 +100,10 @@ if torch.cuda.device_count() > 1:
     model = DataParallel(model())
 else:
     model = model()
-
 model = model.to(device)
 
 validation = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=device)
+C = Checkpoints()
 
 def trainer(
         model_inp,

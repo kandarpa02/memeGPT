@@ -2,7 +2,7 @@ import torch
 import sys
 from memeGPT.model.model import Model
 from memeGPT.tokenizer.tokenizer import text_tokenizer
-from memeGPT.data.dataloader import Load_data
+from memeGPT.data.dataloader import T3nsorLoader
 
 class TestEvaluator:
     def __init__(self, model, test_data, device='cpu'):
@@ -33,11 +33,14 @@ if __name__ == "__main__":
     model = Model(model_name)
     path = sys.argv[2]
     weights_path = sys.argv[3]
-    _data = Load_data(path, tokenizer)
+    
+    dataset = T3nsorLoader(path)
+    test_loader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=False)
+    
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = model.load_weights(path= weights_path, map_location=device)
+    model = model.load_weights(path=weights_path, map_location=device)
     model = model()
-    _, test_loader, _ = _data.dataloader()
+    
     T_e = TestEvaluator(model, test_loader, device)
 
     avg_loss = T_e.evaluate()
@@ -45,6 +48,7 @@ if __name__ == "__main__":
 
     print(f"Loss: {avg_loss:.4f}")
     print(f"Perplexity: {perplexity:.4f}")
+
 
     # How to use this: 
     #     in terminal >> python model_name test_model.py data_path weights_path

@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import torch
 import os
+import random
 
 def preprocess(text):
     text = re.sub(r'[^a-zA-Z0-9\s.,!?;:()"\'-]', '', text)  
@@ -16,25 +17,50 @@ class ChunkedTokenizerSaver:
         self.max_len = max_len
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
-    def tokenize_and_save(self, raw_data_path, save_dir):
+    def tokenize_and_save(
+        self, raw_data_path, save_dir,
+        split=True, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, seed=42
+    ):
         os.makedirs(save_dir, exist_ok=True)
-        reader = pd.read_csv(raw_data_path, chunksize=self.chunk_size)
+        reader = pd.read_csv(raw_data_path)
 
-        for i, chunk in enumerate(reader):
-            print(f"🔹 Processing chunk {i}...")
-            texts = [preprocess(t) for t in chunk["text"].tolist()]
-            tokens = self.tokenizer(
-                texts,
-                padding="max_length",
-                truncation=True,
-                max_length=self.max_len,
-                return_tensors="pth"
-            )
-            tokens["labels"] = tokens["input_ids"].clone()
+        texts = [preprocess(t) for t in reader["text"].tolist()]
+        total = len(texts)
 
-            chunk_path = os.path.join(save_dir, f"chunk_{i}.pth")
-            torch.save(tokens, chunk_path)
-            print(f"✅ Saved: {chunk_path}")
+        if split:
+            random.seed(seed)
+            random.shuffle(texts)
+            train_end = int(total * train_ratio)
+            val_end = train_end + int(total * val_ratio)
+
+            splits = {
+                "train": texts[:train_end],
+                "val": texts[train_end:val_end],
+                "test": texts[val_end:]
+            }
+        else:
+            splits = {"train": texts}  # Use all data as training data
+
+        for split_name, split_texts in splits.items():
+            split_dir = os.path.join(save_dir, split_name)
+            os.makedirs(split_dir, exist_ok=True)
+
+            for i in range(0, len(split_texts), self.chunk_size):
+                chunk_texts = split_texts[i:i + self.chunk_size]
+                print(f"🔹 Processing {split_name} chunk {i // self.chunk_size}...")
+
+                tokens = self.tokenizer(
+                    chunk_texts,
+                    padding="max_length",
+                    truncation=True,
+                    max_length=self.max_len,
+                    return_tensors="pt"
+                )
+                tokens["labels"] = tokens["input_ids"].clone()
+
+                chunk_path = os.path.join(split_dir, f"chunk_{i // self.chunk_size}.pth")
+                torch.save(tokens, chunk_path)
+                print(f"Saved: {chunk_path}")
 
 
 class T3nsorLoader(Dataset):

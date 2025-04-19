@@ -2,7 +2,7 @@ from transformers import GPT2LMHeadModel
 import torch
 from peft import get_peft_model, LoraConfig, TaskType
 from peft import PeftModel, prepare_model_for_kbit_training
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import BitsAndBytesConfig
 
 class Model:
     def __init__(self, model_name):
@@ -73,7 +73,7 @@ class Model:
 
     def load_weights(self, path, base_model_name, map_location='cuda'):
         try:
-            base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
+            base_model = GPT2LMHeadModel.from_pretrained(base_model_name)
             self.model = PeftModel.from_pretrained(base_model, path, device_map=map_location)
             print("QLoRA weights loaded successfully.")
         except Exception as e:
