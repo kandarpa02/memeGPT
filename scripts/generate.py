@@ -27,7 +27,7 @@ text_generator = pipeline(
 
 # model.config.pad_token_id = model.config.eos_token_id
 
-prompt = f"prompt:{sys.argv[3]}\n meme:"
+prompt = f"prompt:{sys.argv[3]}\n:"
 outputs = text_generator(
     prompt,
     max_length=512,
