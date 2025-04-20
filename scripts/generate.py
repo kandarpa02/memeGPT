@@ -6,7 +6,7 @@ import sys
 import warnings
 warnings.filterwarnings("ignore")
 import yaml
-from peft import LoraConfig
+from peft import LoraConfig, TaskType
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

@@ -4,7 +4,7 @@ from memeGPT.model.model import Model
 from memeGPT.tokenizer.tokenizer import text_tokenizer
 from memeGPT.data.dataloader import T3nsorLoader
 import yaml
-from peft import LoraConfig
+from peft import LoraConfig, TaskType
 
 with open(sys.argv[4], 'r') as f:
     config = yaml.safe_load(f)
