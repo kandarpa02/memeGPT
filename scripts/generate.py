@@ -14,8 +14,8 @@ tokenizer = text_tokenizer("gpt2")
 
 
 path = sys.argv[2]
-model.load_weights(path, base_model_name= model_name, map_location=device)
-model().eval()
+model.load_weights(path, base_model_name= model_name, map_location=device)()
+model.eval()
 text_generator = pipeline(
     "text-generation",
     model= model,
