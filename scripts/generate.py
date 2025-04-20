@@ -9,12 +9,13 @@ warnings.filterwarnings("ignore")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model_name = sys.argv[1]
-model = Model(model_name)()
+wrapper = Model(model_name)()
 tokenizer = text_tokenizer("gpt2")
 
 
 path = sys.argv[2]
-model.load_weights(path, base_model_name= model_name, map_location=device)()
+wrapper.load_weights(path, base_model_name= model_name, map_location=device)
+model = wrapper()
 model.eval()
 text_generator = pipeline(
     "text-generation",
