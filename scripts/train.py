@@ -1,6 +1,6 @@
 # run in this order: >>> python train.py --config --batch_size --epochs
 import torch
-from torch.nn import DataParallel
+from bnb_dataparallel import BnbDataParallel
 from torch.utils.data import DataLoader
 from memeGPT.model.model import Model
 from memeGPT.tokenizer.tokenizer import text_tokenizer
@@ -82,11 +82,16 @@ if optimizer is None:
     raise ValueError(f"Invalid optimizer: {optimizer_name}")
 optimizer = optimizer()
 
+
+model = model()
+
 if torch.cuda.device_count() > 1:
-    model = DataParallel(model())
+    model = BnbDataParallel(model)
 else:
-    model = model()
-model = model.to(device)
+    model = model
+
+primary = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+model = model.to(primary)
 
 validation = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=device)
 C = Checkpoints()
