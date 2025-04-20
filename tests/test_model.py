@@ -66,5 +66,5 @@ if __name__ == "__main__":
 
 
     # How to use this: 
-    #     in terminal >> python model_name test_model.py data_path weights_path peft_config
+    #     in terminal >> python test_model.py model data_path weights_path peft_config
     
