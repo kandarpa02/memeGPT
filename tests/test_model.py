@@ -38,7 +38,7 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=False)
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = model.load_weights(path=weights_path, map_location=device)
+    model = model.load_weights(path=weights_path, base_model_name= model_name, map_location=device)
     model = model()
     
     T_e = TestEvaluator(model, test_loader, device)
