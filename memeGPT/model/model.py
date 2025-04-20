@@ -77,13 +77,19 @@ class Model:
         trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return total, trainable
 
-    def load_weights(self, path, base_model_name, map_location='cuda'):
+    def load_weights(self, path, base_model_name, weights_path, optimizer, map_location='cuda'):
         try:
             base_model = GPT2LMHeadModel.from_pretrained(base_model_name)
-            self.model = PeftModel.from_pretrained(base_model, path, device_map=map_location)
-            self.model.eval()
-            print(f"Loaded LoRA-adapted model from {path}")
+            model = get_peft_model(base_model, weights_path)
+
+            model, optimizer, epoch, loss = self.load_checkpoints(model, optimizer, path)
+            model.eval()
+            self.model = model
+
+            print(f"Successfully loaded checkpoint from {path} (epoch {epoch}, loss {loss:.4f})")
+
         except Exception as e:
             print(f"Failed to load LoRA weights: {e}")
+
         return self
 
