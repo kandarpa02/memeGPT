@@ -18,11 +18,14 @@ tokenizer = text_tokenizer("gpt2")
 with open(sys.argv[3], 'r') as f:
     config = yaml.safe_load(f)
 
+task_type_str = config['peft']['task_type']
+task_type_enum = TaskType[task_type_str]
+
 peft_config = LoraConfig(
-    task_type=config['peft']['task_type'],
-    r=config['peft']['r'],
-    lora_alpha=config['peft']['lora_alpha'],
-    lora_dropout=config['peft']['lora_dropout'],
+    task_type=task_type_enum,
+    r=int(config['peft']['r']),
+    lora_alpha=int(config['peft']['lora_alpha']),
+    lora_dropout=float(config['peft']['lora_dropout']),
     target_modules=config['peft']['target_modules'],
     bias=config['peft']['bias']
 )
