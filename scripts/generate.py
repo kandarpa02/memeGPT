@@ -46,7 +46,7 @@ text_generator = pipeline(
 prompt = f"prompt:{sys.argv[4]}\n:"
 outputs = text_generator(
     prompt,
-    max_length=512,
+    max_length=64,
     temperature=0.8,
     top_k=40,
     top_p=0.95,
