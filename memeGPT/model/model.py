@@ -77,11 +77,22 @@ class Model:
         trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return total, trainable
 
-    def load_weights(self, path, base_model_name, map_location='cuda'):
+    def load_weights(self, path, base_model_name, lora_adapter, map_location='cuda'):
         try:
             base_model = GPT2LMHeadModel.from_pretrained(base_model_name)
+            
             self.model = PeftModel.from_pretrained(base_model, path, device_map=map_location)
+            
+            checkpoint = torch.load(path, map_location=map_location)
+            
+            if 'lora_adapter_state_dict' in checkpoint:
+                lora_adapter.load_state_dict(checkpoint['lora_adapter_state_dict'])
+                print("LoRA adapters loaded successfully.")
+            else:
+                print("No LoRA adapters found in the checkpoint.")
+            
             print("QLoRA weights loaded successfully.")
         except Exception as e:
             print(f"Failed to load QLoRA weights: {e}")
         return self
+
