@@ -1,6 +1,6 @@
 # run in this order: >>> python train.py --config --batch_size --epochs
 import torch
-from bnb_dataparallel import BnbDataParallel
+from memeGPT.utils.bnb_dataparallel import BnbDataParallel
 from torch.utils.data import DataLoader
 from memeGPT.model.model import Model
 from memeGPT.tokenizer.tokenizer import text_tokenizer
