@@ -1,5 +1,6 @@
 import torch
 import os
+from peft import PeftModel
 
 class Checkpoints:
     def __init__(self):
