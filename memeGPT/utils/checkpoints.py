@@ -21,7 +21,7 @@ class Checkpoints:
 
     def load_checkpoints(self, model, optimizer, path):
         checkpoint = torch.load(path)
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint['model_state_dict'], strict = False)
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
         loss = checkpoint['loss']
