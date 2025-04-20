@@ -42,30 +42,16 @@ momentum = float(config["training"].get("momentum", 0.9))
 
 batch_size= int(sys.argv[2])
 
-train_on_full = config["data"].get("train_on_full",False)
+train_paths = config["data"]["train"]
+val_paths   = config["data"]["val"] if config["data"].get("train_on_full", False) else config["data"]["train"]
 
-if train_on_full:
-    train_data = config["data"]["train"]
-    val_data = config["data"]["val"]
+train_ds = T3nsorLoader(train_paths)
+train_mem = [train_ds[i] for i in range(len(train_ds))]
+val_ds = T3nsorLoader(val_paths)
+val_mem = [val_ds[i] for i in range(len(val_ds))]
 
-    Td = T3nsorLoader(train_data)
-    Vd = T3nsorLoader(val_data)
-
-    train_loader = DataLoader(Td, batch_size, shuffle= True, num_workers = 4, pin_memory = True, prefetch_factor = 2)
-    val_loader = DataLoader(Vd, batch_size, shuffle= False, num_workers = 4, pin_memory = True, prefetch_factor = 2) 
-
-else:
-    train_data = config["data"]["train"]
-    val_data = config["data"]["train"]
-
-    Td = T3nsorLoader(train_data)
-    Vd = T3nsorLoader(val_data)
-
-    train_loader = DataLoader(Td, batch_size, shuffle= True, num_workers = 4, pin_memory = True, prefetch_factor = 2)
-    val_loader = DataLoader(Vd, batch_size, shuffle= False, num_workers = 4, pin_memory = True, prefetch_factor = 2) 
-
-
-
+train_loader = DataLoader(train_mem, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True, prefetch_factor=2)
+val_loader   = DataLoader(val_mem,   batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True, prefetch_factor=2)
 
 model.freeze(
     num=int(config["training"].get("num", 0)),
@@ -140,42 +126,36 @@ def trainer(
     Train = Trainer(model_inp, optimizer_, mix_precision, device=device)
 
     model_inp.train()
+
     for epoch in range(epochs_cp, epochs_cp + epochs):
         t0 = time.time()
-        total_loss = 0
-        val_loss = 0
-
+        epoch_loss = 0
         for step, batch in enumerate(train_loader, start=1):
             batch = {k: v.to(device) for k, v in batch.items()}
 
             Train.process(batch)
-            total_loss += Train.loss.item()
-
-            current_val_loss = validation.val_loss()
-            val_loss += current_val_loss
-
-            mlflow.log_metric("train_loss", Train.loss.item(), step=epoch * len(train_loader) + step)
-            mlflow.log_metric("val_loss", current_val_loss, step=epoch * len(train_loader) + step)
+            epoch_loss += Train.loss.item()
 
             sys.stdout.write(
-                f"\rEpoch {epoch+1}/{epochs_cp + epochs} | Step {step}/{len(train_loader)} | Loss: {Train.loss.item():.4f}"
+                f"\rEpoch {epoch+1}/{epochs_cp + epochs} | Step {step}/{len(train_loader)}"
             )
             sys.stdout.flush()
 
-        avg_val_loss = val_loss / len(train_loader)
+        avg_train_loss = epoch_loss / len(train_loader)
+        val_loss = validation.val_loss()
 
         C.save_checkpoints(
             model=model_inp,
             optimizer=optimizer_,
             epoch=epoch + 1,
-            loss=avg_val_loss,
+            loss=val_loss,
             path=save_checkpoint_
         )
 
         t1 = time.time()
-        print(f"\nEpoch {epoch+1}/{epochs_cp + epochs} - Training Loss: {total_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
+        print(f"\nEpoch {epoch+1}/{epochs_cp + epochs} - Training Loss: {avg_train_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
 
-    print(f"Umm training is done senpai >_< !!!!!!!")
+    print(f"training is done senpai >_< !!!!!!!")
 
     mlflow.pytorch.log_model(model_inp, "model")
     mlflow.end_run()
