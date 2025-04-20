@@ -8,13 +8,14 @@ warnings.filterwarnings("ignore")
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-model = Model(sys.argv[1])
+model_name = sys.argv[1]
+model = Model(model_name)
 tokenizer = text_tokenizer("gpt2")
 
 
 path = sys.argv[2]
 
-model.load_weights(path, map_location=device)
+model.load_weights(path, base_model_name= model_name, map_location=device)
 
 model().eval()
 text_generator = pipeline(
@@ -30,7 +31,7 @@ text_generator = pipeline(
 prompt = f"prompt:{sys.argv[3]}\n meme:"
 outputs = text_generator(
     prompt,
-    max_length=128,
+    max_length=512,
     temperature=0.8,
     top_k=40,
     top_p=0.95,
