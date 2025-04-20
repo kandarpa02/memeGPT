@@ -6,6 +6,8 @@ import sys
 import warnings
 warnings.filterwarnings("ignore")
 import yaml
+from peft import LoraConfig
+
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -16,8 +18,17 @@ tokenizer = text_tokenizer("gpt2")
 with open(sys.argv[3], 'r') as f:
     config = yaml.safe_load(f)
 
+peft_config = LoraConfig(
+    task_type=config['peft']['task_type'],
+    r=config['peft']['r'],
+    lora_alpha=config['peft']['lora_alpha'],
+    lora_dropout=config['peft']['lora_dropout'],
+    target_modules=config['peft']['target_modules'],
+    bias=config['peft']['bias']
+)
+
 path = sys.argv[2]
-wrapper.load_weights(path, model_name, config['peft'], map_location=device)
+wrapper.load_weights(path, model_name, peft_config, map_location=device)
 model = wrapper()
 model.eval()
 text_generator = pipeline(
