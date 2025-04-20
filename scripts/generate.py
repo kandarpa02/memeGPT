@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model_name = sys.argv[1]
-wrapper = Model(model_name)()
+wrapper = Model(model_name)
 tokenizer = text_tokenizer("gpt2")
 
 
