@@ -5,6 +5,7 @@ from memeGPT.tokenizer.tokenizer import text_tokenizer
 import sys
 import warnings
 warnings.filterwarnings("ignore")
+import yaml
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -12,9 +13,11 @@ model_name = sys.argv[1]
 wrapper = Model(model_name)
 tokenizer = text_tokenizer("gpt2")
 
+with open(sys.argv[3], 'r') as f:
+    config = yaml.safe_load(f)
 
 path = sys.argv[2]
-wrapper.load_weights(path, base_model_name= model_name, map_location=device)
+wrapper.load_weights(path, model_name, config['peft'], map_location=device)
 model = wrapper()
 model.eval()
 text_generator = pipeline(
@@ -26,7 +29,7 @@ text_generator = pipeline(
 
 # model.config.pad_token_id = model.config.eos_token_id
 
-prompt = f"prompt:{sys.argv[3]}\n:"
+prompt = f"prompt:{sys.argv[4]}\n:"
 outputs = text_generator(
     prompt,
     max_length=512,
@@ -43,4 +46,4 @@ sys.stdout.write(
 
 sys.stdout.flush()
 
-# args> --model_name --weight_path --prompt
+# args> --model_name --weight_path --peft_config --prompt
