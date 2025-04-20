@@ -84,7 +84,7 @@ class Model:
             model = get_peft_model(base_model, peft_config)
             
             ckpt = torch.load(path, map_location=map_location)
-            model.load_state_dict(ckpt['model_state_dict'], strict=False)  # LoRA adapter weights only
+            model.load_state_dict(ckpt['model_state_dict'])  # LoRA adapter weights only
             
             model.eval()
             self.model = model

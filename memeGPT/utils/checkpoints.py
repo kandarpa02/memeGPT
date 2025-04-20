@@ -24,7 +24,7 @@ class Checkpoints:
 
         ckpt = torch.load(path, map_location=lambda s, l: s.cuda() if torch.cuda.is_available() else s)
 
-        model.load_state_dict(ckpt['model_state_dict'])
+        model.load_state_dict(ckpt['model_state_dict'], strict=False)
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
 
         epoch = ckpt['epoch']
