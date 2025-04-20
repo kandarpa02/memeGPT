@@ -20,7 +20,7 @@ class Checkpoints:
 
         print(f"Saved checkpoint at: {checkpoint_path}")
 
-    def load_checkpoints(self, model: PeftModel, optimizer, path: str):
+    def load_checkpoints(self, model, optimizer, path: str):
 
         ckpt = torch.load(path, map_location=lambda s, l: s.cuda() if torch.cuda.is_available() else s)
 
