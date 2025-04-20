@@ -22,7 +22,6 @@ text_generator = pipeline(
     "text-generation",
     model= model(),
     tokenizer=tokenizer(),
-    device= device,
     truncation=True 
 )
 
