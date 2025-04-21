@@ -34,7 +34,7 @@ outputs = text_generator(
     temperature=0.8,
     top_k=40,
     top_p=0.95,
-    do_sample=True,
+    do_sample=False,
     num_return_sequences=1
 )
 
