@@ -78,22 +78,19 @@ class Model:
         trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return total, trainable
 
-    def load_weights(self, path, base_model_name, peft_config, map_location='cuda'):
+    def load_weights(self, path, base_model_name, map_location='cuda'):
         try:
             base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
             
-            model = get_peft_model(base_model, peft_config)
-            
-            ckpt = torch.load(path, map_location=map_location)
-            model.load_state_dict(ckpt['model_state_dict'], strict = False)  # LoRA adapter weights only
-            
+            model = PeftModel.from_pretrained(base_model, path, device_map=map_location)
+
             model.eval()
             self.model = model
 
-            print(f"✅ Successfully loaded LoRA adapter from: {path}")
+            print(f"Successfully loaded LoRA adapter from: {path}")
 
         except Exception as e:
-            print(f"❌ Failed to load LoRA weights: {e}")
+            print(f"Failed to load LoRA weights: {e}")
 
         return self
 

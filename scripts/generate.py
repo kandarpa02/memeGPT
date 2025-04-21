@@ -5,33 +5,16 @@ from memeGPT.tokenizer.tokenizer import text_tokenizer
 import sys
 import warnings
 warnings.filterwarnings("ignore")
-import yaml
-from peft import LoraConfig, TaskType
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 model_name = sys.argv[1]
 wrapper = Model(model_name)
-tokenizer = text_tokenizer("gpt2")
-
-with open(sys.argv[3], 'r') as f:
-    config = yaml.safe_load(f)
-
-task_type_str = config['peft']['task_type']
-task_type_enum = TaskType[task_type_str]
-
-peft_config = LoraConfig(
-    task_type=task_type_enum,
-    r=int(config['peft']['r']),
-    lora_alpha=int(config['peft']['lora_alpha']),
-    lora_dropout=float(config['peft']['lora_dropout']),
-    target_modules=config['peft']['target_modules'],
-    bias=config['peft']['bias']
-)
+tokenizer = text_tokenizer(model_name)
 
 path = sys.argv[2]
-wrapper.load_weights(path, model_name, peft_config, map_location=device)
+wrapper.load_weights(path, model_name, map_location=device)
 model = wrapper()
 model.eval()
 text_generator = pipeline(
@@ -41,9 +24,9 @@ text_generator = pipeline(
     truncation=True 
 )
 
-# model.config.pad_token_id = model.config.eos_token_id
+model.config.pad_token_id = model.config.eos_token_id
 
-prompt = f"prompt:{sys.argv[4]}\n:"
+prompt = f"prompt:{sys.argv[3]}\n:"
 outputs = text_generator(
     prompt,
     max_length=64,
@@ -60,4 +43,4 @@ sys.stdout.write(
 
 sys.stdout.flush()
 
-# args> --model_name --weight_path --peft_config --prompt
+# args> --model_name --weight_path --prompt
