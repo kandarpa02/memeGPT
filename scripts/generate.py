@@ -30,7 +30,7 @@ model.config.pad_token_id = model.config.eos_token_id
 prompt = f"prompt:{sys.argv[3]}\n:"
 outputs = text_generator(
     prompt,
-    max_length=42,
+    max_new_tokens = 50,
     temperature=0.8,
     top_k=40,
     top_p=0.95,
