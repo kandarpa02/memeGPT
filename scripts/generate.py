@@ -16,6 +16,7 @@ tokenizer = text_tokenizer(model_name)
 path = sys.argv[2]
 wrapper.load_weights(path, model_name, map_location=device)
 model = wrapper()
+model = model.merge_and_unload()
 model.eval()
 text_generator = pipeline(
     "text-generation",
