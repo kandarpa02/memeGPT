@@ -1,12 +1,12 @@
 from torch.amp import autocast, GradScaler
 
 class Trainer:
-    def __init__(self, model, _optimizer, mix_precision = False, device='cpu'):
+    def __init__(self, model, _optimizer, mix_precision = False, scaler=None, device='cpu'):
         self.model = model
         self._optimizer = _optimizer
         self.mix_precision = mix_precision
         self.device = device
-        self.scaler = GradScaler(self.device)
+        self.scaler = scaler if scaler else GradScaler()
         self._loss = 0
 
     def process(self, batch):
@@ -23,7 +23,7 @@ class Trainer:
             self.scaler.update()
 
         else:
-            output = self.model(**self.batch)
+            output = self.model(**batch)
             loss = output.loss.mean()
             self._loss = loss
             loss.backward()

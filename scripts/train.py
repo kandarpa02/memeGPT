@@ -1,5 +1,6 @@
 # run in this order: >>> python train.py --config --batch_size --epochs
 import torch
+from torch.amp import GradScaler
 from memeGPT.utils.bnb_dataparallel import BnbDataParallel
 from torch.utils.data import DataLoader
 from memeGPT.model.model import Model
@@ -82,7 +83,6 @@ if optimizer is None:
     raise ValueError(f"Invalid optimizer: {optimizer_name}")
 optimizer = optimizer()
 
-
 model = model()
 
 if torch.cuda.device_count() > 1:
@@ -112,9 +112,13 @@ def trainer(
         model_inp = model
         _val_loss = 0
         epochs_cp = 0
+        loaded_scaler = None  # Initialize empty scaler
     else:
-        model_inp, optimizer_, epochs_cp, _val_loss = C.load_checkpoints(model, optimizer, load_checkpoint_)
-        print(f" Resuming training from epoch {epochs_cp} with val_loss = {_val_loss}")
+        model_inp, optimizer_, loaded_scaler, epochs_cp, _val_loss = C.load_checkpoint(
+            base_model=model,
+            optimizer=optimizer,
+            path=load_checkpoint_
+        )
 
         if override_opt:
             print(f" Overriding optimizer with {override_opt}")
@@ -128,8 +132,13 @@ def trainer(
             for param_group in optimizer_.param_groups:
                 param_group['lr'] = float(override_lr)
 
-    Train = Trainer(model_inp, optimizer_, mix_precision, device=device)
-
+    Train = Trainer(
+        model_inp, 
+        optimizer_, 
+        mix_precision, 
+        device=device,
+        scaler=loaded_scaler
+    )
     model_inp.train()
 
     for epoch in range(epochs_cp, epochs_cp + epochs):
@@ -150,12 +159,13 @@ def trainer(
         val_loss = validation.val_loss()
 
         C.save_checkpoints(
-            model=model_inp,
-            optimizer=optimizer_,
-            epoch=epoch + 1,
-            loss=val_loss,
-            path=save_checkpoint_
-        )
+        model=model_inp,
+        optimizer=optimizer_,
+        scaler=Train.scaler, 
+        epoch=epoch + 1,
+        loss=val_loss,
+        path=save_checkpoint_
+    )
 
         t1 = time.time()
         print(f"\nEpoch {epoch+1}/{epochs_cp + epochs} - Training Loss: {avg_train_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")

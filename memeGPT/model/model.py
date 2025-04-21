@@ -78,19 +78,30 @@ class Model:
         trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return total, trainable
 
-    def load_weights(self, path, base_model_name, map_location='cuda'):
+    def load_weights(self, path, base_model_name=None, map_location='cuda'):
         try:
-            base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
-            
-            model = PeftModel.from_pretrained(base_model, path, device_map=map_location)
 
-            model.eval()
+            base_model = AutoModelForCausalLM.from_pretrained(
+                base_model_name if base_model_name else self.model_name, 
+                quantization_config=self.model.quantization_config,  
+                device_map="auto"
+            )
+            
+            base_model = prepare_model_for_kbit_training(base_model)
+            
+            model = PeftModel.from_pretrained(
+                base_model, 
+                path,
+                is_trainable=True,  # Crucial for training resumption
+                device_map="auto"
+            )
+            
+            # Preserve original training mode state
+            model.train() if self.model.training else model.eval()
             self.model = model
 
             print(f"Successfully loaded LoRA adapter from: {path}")
-
         except Exception as e:
             print(f"Failed to load LoRA weights: {e}")
-
         return self
 
