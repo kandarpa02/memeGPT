@@ -96,6 +96,8 @@ model = model.to(primary)
 validation = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=device)
 C = Checkpoints()
 
+model.config.use_cache = False
+
 def trainer(
         model_inp,
         mix_precision=config["training"].get("precision", True),
