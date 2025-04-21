@@ -1,5 +1,6 @@
-from transformers import GPT2LMHeadModel
+from transformers import AutoModelForCausalLM
 import torch
+import os
 from peft import get_peft_model, LoraConfig, TaskType
 from peft import PeftModel, prepare_model_for_kbit_training
 from transformers import BitsAndBytesConfig
@@ -15,7 +16,7 @@ class Model:
             bnb_4bit_compute_dtype=torch.float16
         )
 
-        self.model = GPT2LMHeadModel.from_pretrained(
+        self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             quantization_config=bnb_config,
             device_map="cuda" if torch.cuda.is_available() else "cpu"
@@ -79,7 +80,7 @@ class Model:
 
     def load_weights(self, path, base_model_name, peft_config, map_location='cuda'):
         try:
-            base_model = GPT2LMHeadModel.from_pretrained(base_model_name)
+            base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
             
             model = get_peft_model(base_model, peft_config)
             
@@ -89,11 +90,10 @@ class Model:
             model.eval()
             self.model = model
 
-            print(f"Successfully loaded LoRA weights from checkpoint: {path}")
+            print(f"✅ Successfully loaded LoRA adapter from: {path}")
 
         except Exception as e:
-            print(f"Failed to load LoRA weights: {e}")
-        
-        return self
+            print(f"❌ Failed to load LoRA weights: {e}")
 
+        return self
 
