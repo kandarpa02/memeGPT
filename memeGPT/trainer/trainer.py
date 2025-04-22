@@ -1,6 +1,6 @@
 import torch
 from torch.amp import autocast 
-from torch.cuda import GradScaler
+from torch.amp import GradScaler
 
 class Trainer:
     def __init__(self, model, optimizer, mix_precision=False, scaler=None, device='cuda'):
