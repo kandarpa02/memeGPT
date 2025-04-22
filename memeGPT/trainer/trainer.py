@@ -22,7 +22,7 @@ class Trainer:
         self.optimizer.zero_grad()
 
         if self.mix_precision:
-            with autocast():
+            with autocast(device_type='cuda', dtype=torch.float16):
                 output = self.model(**batch)
                 loss   = output.loss.mean()
 
