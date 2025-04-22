@@ -19,7 +19,7 @@ class Trainer:
         self.optimizer.zero_grad()
 
         if self.mix_precision:
-            with autocast():                     # defaults to cuda+float16
+            with autocast(device_type='cuda'):                     # defaults to cuda+float16
                 output = self.model(**batch)
                 loss   = output.loss.mean()
 
