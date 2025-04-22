@@ -135,7 +135,7 @@ def trainer(
     Train = Trainer(
         model_inp, 
         optimizer_, 
-        mix_precision, 
+        mix_precision = config['training'].get('precision', 'False'), 
         device=device,
         scaler=loaded_scaler
     )
