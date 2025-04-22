@@ -55,7 +55,6 @@ val_loader   = DataLoader(val_mem,   batch_size=batch_size, shuffle=False, num_w
 
 
 def trainer(
-        model_inp,
         mix_precision=bool(config["training"].get("precision", True)),
         epochs=epochs,
         load_model_checkpoint_=config["training"].get("checkpoint_load"),
