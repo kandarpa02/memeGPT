@@ -96,9 +96,7 @@ class Model:
                 torch_dtype=torch.float16,  # Crucial for training resumption
                 device_map="auto"
             )
-            
-            # Preserve original training mode state
-            model.train() if self.model.training else model.eval()
+        
             self.model = model
 
             print(f"Successfully loaded LoRA adapter from: {path}")

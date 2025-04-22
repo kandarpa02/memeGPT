@@ -38,9 +38,7 @@ if __name__ == "__main__":
     
     # Load LoRA adapters
     wrapper.load_weights(peft_path, model_name)
-    model = wrapper.model  # Access PEFT model directly
-    
-    model = prepare_model_for_kbit_training(model)
+    model = wrapper.model
     
     dataset = T3nsorLoader(data_path)
     test_loader = torch.utils.data.DataLoader(
