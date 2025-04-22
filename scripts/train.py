@@ -125,11 +125,10 @@ def trainer(
         epochs_cp = 0
         loaded_scaler = None
     else:
-        temp_scaler = GradScaler(enabled=mix_precision) 
         _, optimizer_, loaded_scaler, epochs_cp, _val_loss = C.load_checkpoint(
             base_model=model,
             optimizer=optimizer,
-            scaler = temp_scaler,
+            scaler = GradScaler(enabled=mix_precision),
             model_path=load_model_checkpoint_,
             train_state_path= load_train_state
         )
