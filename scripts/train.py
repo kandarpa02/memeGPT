@@ -100,26 +100,38 @@ def trainer(
         model_inp,
         mix_precision=config["training"].get("precision", True),
         epochs=epochs,
-        load_checkpoint_=config["training"].get("checkpoint_load"),
+        load_model_checkpoint_=config["training"].get("checkpoint_load"),
+        load_train_state = config["training"]['train_state']
         save_checkpoint_=config["training"].get("checkpoint_save")
     ):
 
     override_lr = config["training"].get("override_lr")
     override_opt = config["training"].get("override_optimizer")
 
-    if load_checkpoint_ is None:
-        optimizer_ = optimizer
+    if load_model_checkpoint_ is None:
         model_inp = model
+    else:
+        model_inp, _, _, _, _ = C.load_checkpoint(
+            base_model=model,
+            optimizer=optimizer,
+            scaler = temp_scaler,
+            model_path=load_model_checkpoint_
+            train_state_path= load_train_state
+        )
+
+    if load_train_state is None:
+        optimizer_ = optimizer
         _val_loss = 0
         epochs_cp = 0
         loaded_scaler = None
     else:
         temp_scaler = GradScaler(enabled=mix_precision) 
-        model_inp, optimizer_, loaded_scaler, epochs_cp, _val_loss = C.load_checkpoint(
+        _, optimizer_, loaded_scaler, epochs_cp, _val_loss = C.load_checkpoint(
             base_model=model,
             optimizer=optimizer,
             scaler = temp_scaler,
-            path=load_checkpoint_
+            model_path=load_model_checkpoint_,
+            train_state_path= load_train_state
         )
 
         if override_opt:

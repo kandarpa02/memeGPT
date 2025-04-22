@@ -24,15 +24,15 @@ class Checkpoints:
 
         print(f"Saved checkpoint: {checkpoint_path}")
 
-    def load_checkpoint(self, base_model, optimizer, scaler: GradScaler, path: str, device: str = None):
+    def load_checkpoint(self, base_model, optimizer, scaler: GradScaler, model_path: str, train_state_path: str, device: str = None):
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-        model = PeftModel.from_pretrained(base_model, path)
+        model = PeftModel.from_pretrained(base_model, model_path)
         model.to(device)
 
         state = torch.load(
-            os.path.join(path, "training_state.pth"),
+            train_state_path ,
             map_location=device
         )
         
@@ -47,7 +47,7 @@ class Checkpoints:
         else:
             print("Warning: Loading checkpoint without scaler state")
             scaler = GradScaler()
-            
+
         epoch = state['epoch']
         loss = state['loss']
         print(f"Loaded checkpoint from epoch {epoch} with loss {loss:.4f}")
