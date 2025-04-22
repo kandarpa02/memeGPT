@@ -1,36 +1,42 @@
-from torch.amp import autocast, GradScaler
+import torch
+from torch.cuda import autocast 
+from cuda.amp import GradScaler
 
 class Trainer:
-    def __init__(self, model, _optimizer, mix_precision = False, scaler=None, device='cpu'):
-        self.model = model
-        self._optimizer = _optimizer
-        self.mix_precision = mix_precision
+    def __init__(self, model, optimizer, mix_precision=False, scaler=None, device='cuda'):
+
+        if device == 'cuda' and not torch.cuda.is_available():
+            raise RuntimeError("CUDA requested but not available")
         self.device = device
-        self.scaler = scaler if scaler else GradScaler()
-        self._loss = 0
+
+        self.model = model.to(self.device)
+
+        self.optimizer     = optimizer
+        self.mix_precision = mix_precision
+        self.scaler        = scaler or GradScaler()
+        self._loss         = 0.0
 
     def process(self, batch):
-        self._optimizer.zero_grad()
-        if self.mix_precision == True:
-            with autocast(device_type=self.device):
-                output = self.model(**batch)
-                loss = output.loss
-            
-            loss = loss.mean()
-            self._loss = loss
-            self.scaler.scale(loss).backward()
-            self.scaler.step(self._optimizer)
-            self.scaler.update()
+        batch = {k: v.to(self.device) for k, v in batch.items()}
 
+        self.optimizer.zero_grad()
+
+        if self.mix_precision:
+            with autocast():
+                output = self.model(**batch)
+                loss   = output.loss.mean()
+
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
         else:
             output = self.model(**batch)
-            loss = output.loss.mean()
-            self._loss = loss
+            loss   = output.loss.mean()
             loss.backward()
-            self._optimizer.step()
-    
+            self.optimizer.step()
+
+        self._loss = loss.item()
+
     @property
     def loss(self):
         return self._loss
-    
-

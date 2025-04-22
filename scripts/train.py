@@ -151,7 +151,7 @@ def trainer(
         model_inp, 
         optimizer_, 
         mix_precision = config['training'].get('precision', 'False'), 
-        device=device,
+        device='cuda',
         scaler= loaded_scaler if loaded_scaler else GradScaler(enabled=mix_precision)
     )
     model_inp.train()
