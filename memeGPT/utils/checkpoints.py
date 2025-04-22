@@ -24,7 +24,7 @@ class Checkpoints:
 
         print(f"Saved checkpoint: {checkpoint_path}")
 
-    def load_checkpoint(self, base_model, optimizer, scaler: GradScaler, model_path: str, train_state_path: str, device: str = None):
+    def load_checkpoint(self, base_model, optimizer, scaler: GradScaler, model_path: str, train_state_path, device: str = None):
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
