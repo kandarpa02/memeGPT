@@ -22,7 +22,7 @@ class Trainer:
         if self.mix_precision:
             with autocast(device_type='cuda'):
                 output = self.model(**batch)
-                loss   = output.loss.mean()
+                loss = output.loss.mean()
 
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)
