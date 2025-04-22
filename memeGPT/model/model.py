@@ -92,7 +92,8 @@ class Model:
             model = PeftModel.from_pretrained(
                 base_model, 
                 path,
-                is_trainable=True,  # Crucial for training resumption
+                is_trainable=True,
+                torch_dtype=torch.float16,  # Crucial for training resumption
                 device_map="auto"
             )
             
