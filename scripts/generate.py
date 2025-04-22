@@ -24,9 +24,7 @@ model.generation_config.pad_token_id = tokenizer.eos_token_id
 text_generator = pipeline(
     "text-generation",
     model=model,
-    tokenizer=tokenizer,
-    device=0 if torch.cuda.is_available() else -1,
-    torch_dtype=torch.float16  # Match quantization dtype
+    tokenizer=tokenizer # Match quantization dtype
 )
 
 prompt = f"prompt:{sys.argv[3]}\n:"
