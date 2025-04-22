@@ -42,8 +42,12 @@ class Checkpoints:
                 if isinstance(v, torch.Tensor):
                     state[k] = v.to(device)
 
-        scaler.load_state_dict(state['scaler_state_dict'])
-
+        if 'scaler_state_dict' in state: 
+            scaler.load_state_dict(state['scaler_state_dict'])
+        else:
+            print("Warning: Loading checkpoint without scaler state")
+            scaler = GradScaler()
+            
         epoch = state['epoch']
         loss = state['loss']
         print(f"Loaded checkpoint from epoch {epoch} with loss {loss:.4f}")
