@@ -61,7 +61,8 @@ def trainer(
         load_train_state = config["training"]['train_state'],
         save_checkpoint_=config["training"].get("checkpoint_save")
     ):
-
+    C = Checkpoints()
+    
     # Model Initializing ############################################
     model = Model(model_name)
     model.freeze(
@@ -150,8 +151,6 @@ def trainer(
 
 
     validation = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=device)
-    C = Checkpoints()
-
     Train = Trainer(
         model_inp, 
         optimizer_, 
