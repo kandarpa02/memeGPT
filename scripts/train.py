@@ -1,4 +1,3 @@
-# run in this order: >>> python train.py --config --batch_size --epochs
 import torch
 from torch.amp import GradScaler
 from memeGPT.utils.bnb_dataparallel import BnbDataParallel
@@ -17,180 +16,147 @@ import mlflow.pytorch
 
 warnings.filterwarnings("ignore")
 
+# Load config
 with open(sys.argv[1], 'r') as f:
     config = yaml.safe_load(f)
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# Device setup
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+# Hyperparams
+batch_size = int(sys.argv[2])
 epochs = int(sys.argv[3])
 model_name = config["training"]["model"]
+
+# Tokenizer
 tokenizer = text_tokenizer(model_name)()
 
+# Log run parameters
 mlflow.start_run()
 mlflow.log_param("model_name", model_name)
 mlflow.log_param("epochs", epochs)
+mlflow.log_param("batch_size", batch_size)
 mlflow.log_param("learning_rate", config["training"].get("lr", 1e-4))
-mlflow.log_param("batch_size", int(sys.argv[2]))
 mlflow.log_param("optimizer", config["training"].get("optimizer", "AdamW"))
 
-lr = float(config["training"].get("lr", 1e-4))
-alpha = float(config["training"].get("alpha", 0.99))
-betas = tuple(config["training"].get("betas", [0.9, 0.999]))
-weight_decay = float(config["training"].get("weight_decay", 0.01))
-momentum = float(config["training"].get("momentum", 0.9))
-
-
-batch_size= int(sys.argv[2])
-
+# DataLoaders
 train_paths = config["data"]["train"]
-val_paths   = config["data"]["val"] if config["data"].get("train_on_full", False) else config["data"]["train"]
+val_paths = config["data"].get("val", train_paths)
 
 train_ds = T3nsorLoader(train_paths)
-train_mem = [train_ds[i] for i in range(len(train_ds))]
 val_ds = T3nsorLoader(val_paths)
-val_mem = [val_ds[i] for i in range(len(val_ds))]
+train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
-train_loader = DataLoader(train_mem, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True, prefetch_factor=2)
-val_loader   = DataLoader(val_mem,   batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True, prefetch_factor=2)
+# Trainer function
 
+def trainer():
+    mix_precision    = bool(config["training"].get("precision", True))
+    load_model_ckpt  = config["training"].get("checkpoint_load")
+    load_train_state = config["training"].get("train_state")
+    save_checkpoint  = config["training"].get("checkpoint_save")
 
-def trainer(
-        mix_precision=bool(config["training"].get("precision", True)),
-        epochs=epochs,
-        load_model_checkpoint_=config["training"].get("checkpoint_load"),
-        load_train_state = config["training"]['train_state'],
-        save_checkpoint_=config["training"].get("checkpoint_save")
-    ):
     C = Checkpoints()
 
-    # Model Initializing ############################################
+    # 1) Build model and apply freezes/LoRA
     model = Model(model_name)
     model.freeze(
         num=int(config["training"].get("num", 0)),
-        ln_=int(config["training"].get("ln", 0)), 
+        ln_=int(config["training"].get("ln", 0)),
         wte=int(config["training"].get("wte", 0)),
         wpe=int(config["training"].get("wpe", 0))
     )
-
-    total_params, trainable_params = model.num_params()
-    print(f"Total params: {total_params}")
-
     model.lora(
         r=int(config['lora'].get('r', 8)),
         alpha_l=int(config['lora'].get('alpha_l', 16)),
         dropout=float(config['lora'].get('dropout', 0.5)),
         target_modules=config['lora'].get('modules', ["c_attn", "c_proj"])
     )
-    model = model()
-    optimizers = {
-            'AdamW': _opt.AdamWOptimizer(model_inp, lr, betas, weight_decay),
-            'SGD': _opt.SGDOptimizer(model_inp, lr, momentum, weight_decay),
-            'RMSprop': _opt.RMSpropOptimizer(model_inp, lr, alpha, weight_decay)
-        }
+    model = model()  # instantiate
 
-    optimizer_name = config["training"].get("optimizer", "AdamW")
-    optimizer_wrapper = optimizers.get(optimizer_name)
-    if optimizer_wrapper is None:
-        raise ValueError(f"Invalid optimizer: {optimizer_name}")
-    optimizer = optimizer_wrapper()
-
-    
-    # Loading checkponts ############################################
-    override_lr = config["training"].get("override_lr")
-    override_opt = config["training"].get("override_optimizer")
-
-    temp_scaler = GradScaler()
-
-    if load_model_checkpoint_ is None:
-        model_inp = model
-    else:
-        model_inp, _, _, _, _ = C.load_checkpoint(
+    # 2) Optionally load only model weights
+    if load_model_ckpt:
+        C.load_checkpoint(
             base_model=model,
-            optimizer=optimizer,
-            scaler = temp_scaler,
-            model_path=load_model_checkpoint_,
-            train_state_path= load_train_state
+            optimizer=None,
+            scaler=None,
+            model_path=load_model_ckpt,
+            train_state_path=None
         )
 
+    # 3) Wrap and move to device
     if torch.cuda.device_count() > 1:
-        model_inp = BnbDataParallel(model_inp)
+        model = BnbDataParallel(model)
+    model = model.to(device)
 
-    primary = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model_inp = model_inp.to(primary)
+    # 4) Build optimizer on final model
+    lr           = float(config["training"].get("lr", 1e-4))
+    alpha        = float(config["training"].get("alpha", 0.99))
+    betas        = tuple(config["training"].get("betas", [0.9, 0.999]))
+    weight_decay = float(config["training"].get("weight_decay", 0.01))
+    momentum     = float(config["training"].get("momentum", 0.9))
 
-    if load_train_state is None:
-        optimizer_ = optimizer
-        _val_loss = 0
-        epochs_cp = 0
-        loaded_scaler = None
-    else:
-        _, optimizer_, loaded_scaler, epochs_cp, _val_loss = C.load_checkpoint(
+    OPTIMS = {
+        'AdamW':  _opt.AdamWOptimizer,
+        'SGD':    _opt.SGDOptimizer,
+        'RMSprop':_opt.RMSpropOptimizer,
+    }
+    optim_name = config["training"].get("optimizer", 'AdamW')
+    OptimCls   = OPTIMS.get(optim_name)
+    if OptimCls is None:
+        raise ValueError(f"Invalid optimizer: {optim_name}")
+    optimizer = OptimCls(model, lr, betas, weight_decay) if optim_name=='AdamW' else \
+                OptimCls(model, lr, momentum, weight_decay) if optim_name=='SGD' else \
+                OptimCls(model, lr, alpha, weight_decay)
+
+    # 5) Load optimizer & scaler state if resuming training
+    scaler      = GradScaler(enabled=mix_precision)
+    start_epoch = 0
+    last_val    = None
+    if load_train_state:
+        _, optimizer, scaler, start_epoch, last_val = C.load_checkpoint(
             base_model=model,
             optimizer=optimizer,
-            scaler = temp_scaler,
-            model_path=load_model_checkpoint_,
-            train_state_path= load_train_state
+            scaler=scaler,
+            model_path=load_model_ckpt,
+            train_state_path=load_train_state
         )
 
-        if override_opt:
-            print(f" Overriding optimizer with {override_opt}")
-            opt_fn = optimizers.get(override_opt)
-            if opt_fn is None:
-                raise ValueError(f"Unknown optimizer override: {override_opt}")
-            optimizer_ = opt_fn()
-
-        if override_lr is not None:
-            print(f" Overriding learning rate with {override_lr}")
-            for param_group in optimizer_.param_groups:
-                param_group['lr'] = float(override_lr)
-
-    #################################################################
-
-
-
+    # 6) Initialize validator and trainer
     validation = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=device)
-    Train = Trainer(
-        model_inp, 
-        optimizer_, 
-        mix_precision = config['training'].get('precision', 'False'), 
-        device='cuda',
-        scaler= loaded_scaler if loaded_scaler else GradScaler(enabled=mix_precision)
+    trainer_obj = Trainer(
+        model,
+        optimizer,
+        mix_precision=mix_precision,
+        device=device,
+        scaler=scaler
     )
 
-    for epoch in range(epochs_cp, epochs_cp + epochs):
-        t0 = time.time()
-        epoch_loss = 0
-        for step, batch in enumerate(train_loader, start=1):
+    # 7) Training loop
+    for epoch in range(start_epoch, start_epoch + epochs):
+        t0, total_loss = time.time(), 0.0
+        for batch in train_loader:
             batch = {k: v.to(device) for k, v in batch.items()}
-
-            Train.process(batch)
-            epoch_loss += Train.loss
-
-            sys.stdout.write(
-                f"\rEpoch {epoch+1}/{epochs_cp + epochs} | Step {step}/{len(train_loader)}"
-            )
-            sys.stdout.flush()
-
-        avg_train_loss = epoch_loss / len(train_loader)
+            trainer_obj.process(batch)
+            total_loss += trainer_obj.loss
+        avg_loss = total_loss / len(train_loader)
         val_loss = validation.val_loss()
 
+        # 8) Save checkpoint
         C.save_checkpoint(
-        model=model_inp,
-        optimizer=optimizer_,
-        scaler=Train.scaler, 
-        epoch=epoch + 1,
-        loss=val_loss,
-        path=save_checkpoint_
-    )
+            model=model,
+            optimizer=optimizer,
+            scaler=scaler,
+            epoch=epoch+1,
+            loss=val_loss,
+            path=save_checkpoint
+        )
 
-        t1 = time.time()
-        print(f"\nEpoch {epoch+1}/{epochs_cp + epochs} - Training Loss: {avg_train_loss:.4f} - Validation Loss: {val_loss:.4f} - Time: {t1 - t0:.2f}s")
+        print(f"Epoch {epoch+1}/{start_epoch+epochs} - Train Loss: {avg_loss:.4f} - Val Loss: {val_loss:.4f} - Time: {time.time()-t0:.2f}s")
 
-    print(f"training is done senpai >_< !!!!!!!")
-
-    mlflow.pytorch.log_model(model_inp, "model")
+    # 9) Finalize
+    mlflow.pytorch.log_model(model, "model")
     mlflow.end_run()
 
 if __name__ == "__main__":
     trainer()
-
