@@ -38,16 +38,13 @@ class Checkpoints:
         )
         
         optimizer.load_state_dict(state['optimizer_state_dict'])
-        for state in optimizer.state.values():
-            for k, v in state.items():
+        for opt_state in optimizer.state.values():
+            for k, v in opt_state.items():
                 if isinstance(v, torch.Tensor):
                     state[k] = v.to(device)
 
         if 'scaler_state_dict' in state: 
             scaler.load_state_dict(state['scaler_state_dict'])
-        else:
-            print("Warning: Loading checkpoint without scaler state")
-            scaler = GradScaler()
 
         epoch = state['epoch']
         loss = state['loss']
