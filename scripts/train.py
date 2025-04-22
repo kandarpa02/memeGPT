@@ -62,7 +62,7 @@ def trainer(
         save_checkpoint_=config["training"].get("checkpoint_save")
     ):
     C = Checkpoints()
-    
+
     # Model Initializing ############################################
     model = Model(model_name)
     model.freeze(
@@ -82,7 +82,19 @@ def trainer(
         target_modules=config['lora'].get('modules', ["c_attn", "c_proj"])
     )
     model = model()
+    optimizers = {
+            'AdamW': _opt.AdamWOptimizer(model_inp, lr, betas, weight_decay),
+            'SGD': _opt.SGDOptimizer(model_inp, lr, momentum, weight_decay),
+            'RMSprop': _opt.RMSpropOptimizer(model_inp, lr, alpha, weight_decay)
+        }
 
+    optimizer_name = config["training"].get("optimizer", "AdamW")
+    optimizer_wrapper = optimizers.get(optimizer_name)
+    if optimizer_wrapper is None:
+        raise ValueError(f"Invalid optimizer: {optimizer_name}")
+    optimizer = optimizer_wrapper()
+
+    
     # Loading checkponts ############################################
     override_lr = config["training"].get("override_lr")
     override_opt = config["training"].get("override_optimizer")
@@ -105,20 +117,6 @@ def trainer(
 
     primary = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model_inp = model_inp.to(primary)
-
-
-    optimizers = {
-        'AdamW': _opt.AdamWOptimizer(model_inp, lr, betas, weight_decay),
-        'SGD': _opt.SGDOptimizer(model_inp, lr, momentum, weight_decay),
-        'RMSprop': _opt.RMSpropOptimizer(model_inp, lr, alpha, weight_decay)
-    }
-
-    optimizer_name = config["training"].get("optimizer", "AdamW")
-    optimizer_wrapper = optimizers.get(optimizer_name)
-    if optimizer_wrapper is None:
-        raise ValueError(f"Invalid optimizer: {optimizer_name}")
-    optimizer = optimizer_wrapper()
-
 
     if load_train_state is None:
         optimizer_ = optimizer
