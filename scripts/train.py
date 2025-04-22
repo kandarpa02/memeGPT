@@ -114,9 +114,11 @@ def trainer(
         epochs_cp = 0
         loaded_scaler = None  # Initialize empty scaler
     else:
+        temp_scaler = GradScaler(enabled=mix_precision) 
         model_inp, optimizer_, loaded_scaler, epochs_cp, _val_loss = C.load_checkpoint(
             base_model=model,
             optimizer=optimizer,
+            scaler = temp_scaler
             path=load_checkpoint_
         )
 
@@ -137,7 +139,7 @@ def trainer(
         optimizer_, 
         mix_precision = config['training'].get('precision', 'False'), 
         device=device,
-        scaler=loaded_scaler
+        scaler= loaded_scaler if loaded_scaler else GradScaler(enabled=mix_precision)
     )
     model_inp.train()
 
