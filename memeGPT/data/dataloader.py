@@ -62,6 +62,10 @@ class ChunkedTokenizerSaver:
                 torch.save(tokens, chunk_path)
                 print(f"Saved: {chunk_path}")
 
+from torch.serialization import add_safe_globals
+from transformers.tokenization_utils_base import BatchEncoding
+
+add_safe_globals([BatchEncoding])
 
 class T3nsorLoader(Dataset):
     def __init__(self, chunk_folder):
@@ -76,8 +80,8 @@ class T3nsorLoader(Dataset):
 
         for chunk_id, file in enumerate(self.chunk_files):
             data = torch.load(file, weights_only=False)
-            num_samples = data["input_ids"].shape[0]
-            self.sample_index.extend([(chunk_id, i) for i in range(num_samples)])
+            n = data["input_ids"].shape[0]
+            self.sample_index.extend([(chunk_id, i) for i in range(n)])
 
     def __len__(self):
         return len(self.sample_index)
@@ -86,15 +90,10 @@ class T3nsorLoader(Dataset):
         chunk_id, local_idx = self.sample_index[idx]
 
         if chunk_id != self.current_chunk_id:
-            # Load new chunk only if necessary
-            self.chunk_data = torch.load(self.chunk_files[chunk_id])
+            self.chunk_data = torch.load(
+                self.chunk_files[chunk_id],
+                weights_only=False
+            )
             self.current_chunk_id = chunk_id
 
-        item = {
-            key: self.chunk_data[key][local_idx]
-            for key in self.chunk_data
-        }
-        return item
-    
-
-
+        return {k: v[local_idx] for k, v in self.chunk_data.items()}
