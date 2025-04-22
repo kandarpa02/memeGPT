@@ -158,7 +158,7 @@ def trainer(
         avg_train_loss = epoch_loss / len(train_loader)
         val_loss = validation.val_loss()
 
-        C.save_checkpoints(
+        C.save_checkpoint(
         model=model_inp,
         optimizer=optimizer_,
         scaler=Train.scaler, 
