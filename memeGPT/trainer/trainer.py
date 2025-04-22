@@ -5,12 +5,13 @@ class Trainer:
     def __init__(self, model, optimizer, mix_precision=False, scaler=None, device='cuda'):
         if device == 'cuda' and not torch.cuda.is_available():
             raise RuntimeError("CUDA requested but not available")
-        self.device        = device
-        self.model         = model.to(device)
-        self.optimizer     = optimizer
+        self.device = device
+        self.model = model.to(device)
+        self.model.train()  # Ensure model is in training mode
+        self.optimizer = optimizer
         self.mix_precision = mix_precision
-        self.scaler        = scaler or GradScaler()
-        self._loss         = 0.0
+        self.scaler = scaler or GradScaler()
+        self._loss = 0.0
 
     def process(self, batch):
         # Move inputs to GPU
@@ -19,7 +20,7 @@ class Trainer:
         self.optimizer.zero_grad()
 
         if self.mix_precision:
-            with autocast(device_type='cuda'):                     # defaults to cuda+float16
+            with autocast(device_type='cuda'):
                 output = self.model(**batch)
                 loss   = output.loss.mean()
 
