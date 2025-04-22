@@ -33,7 +33,8 @@ class Checkpoints:
 
         state = torch.load(
             train_state_path ,
-            map_location=device
+            map_location=device,
+            weights_only= False
         )
         
         optimizer.load_state_dict(state['optimizer_state_dict'])
