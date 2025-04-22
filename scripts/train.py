@@ -24,7 +24,6 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 epochs = int(sys.argv[3])
 model_name = config["training"]["model"]
-model = Model(model_name)
 tokenizer = text_tokenizer(model_name)()
 
 mlflow.start_run()
@@ -54,47 +53,6 @@ val_mem = [val_ds[i] for i in range(len(val_ds))]
 train_loader = DataLoader(train_mem, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True, prefetch_factor=2)
 val_loader   = DataLoader(val_mem,   batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True, prefetch_factor=2)
 
-model.freeze(
-    num=int(config["training"].get("num", 0)),
-    ln_=int(config["training"].get("ln", 0)), 
-    wte=int(config["training"].get("wte", 0)),
-    wpe=int(config["training"].get("wpe", 0))
-)
-
-total_params, trainable_params = model.num_params()
-print(f"Total params: {total_params}")
-
-model.lora(
-    r=int(config['lora'].get('r', 8)),
-    alpha_l=int(config['lora'].get('alpha_l', 16)),
-    dropout=float(config['lora'].get('dropout', 0.5)),
-    target_modules=config['lora'].get('modules', ["c_attn", "c_proj"])
-)
-
-optimizers = {
-    'AdamW': _opt.AdamWOptimizer(model, lr, betas, weight_decay),
-    'SGD': _opt.SGDOptimizer(model, lr, momentum, weight_decay),
-    'RMSprop': _opt.RMSpropOptimizer(model, lr, alpha, weight_decay)
-}
-
-optimizer_name = config["training"].get("optimizer", "AdamW")
-optimizer = optimizers.get(optimizer_name)
-if optimizer is None:
-    raise ValueError(f"Invalid optimizer: {optimizer_name}")
-optimizer = optimizer()
-
-model = model()
-
-if torch.cuda.device_count() > 1:
-    model = BnbDataParallel(model)
-else:
-    model = model
-
-primary = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-model = model.to(primary)
-
-validation = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=device)
-C = Checkpoints()
 
 def trainer(
         model_inp,
@@ -105,6 +63,27 @@ def trainer(
         save_checkpoint_=config["training"].get("checkpoint_save")
     ):
 
+    # Model Initializing ############################################
+    model = Model(model_name)
+    model.freeze(
+        num=int(config["training"].get("num", 0)),
+        ln_=int(config["training"].get("ln", 0)), 
+        wte=int(config["training"].get("wte", 0)),
+        wpe=int(config["training"].get("wpe", 0))
+    )
+
+    total_params, trainable_params = model.num_params()
+    print(f"Total params: {total_params}")
+
+    model.lora(
+        r=int(config['lora'].get('r', 8)),
+        alpha_l=int(config['lora'].get('alpha_l', 16)),
+        dropout=float(config['lora'].get('dropout', 0.5)),
+        target_modules=config['lora'].get('modules', ["c_attn", "c_proj"])
+    )
+    model = model()
+
+    # Loading checkponts ############################################
     override_lr = config["training"].get("override_lr")
     override_opt = config["training"].get("override_optimizer")
 
@@ -120,6 +99,26 @@ def trainer(
             model_path=load_model_checkpoint_,
             train_state_path= load_train_state
         )
+
+    if torch.cuda.device_count() > 1:
+        model_inp = BnbDataParallel(model_inp)
+
+    primary = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model_inp = model_inp.to(primary)
+
+
+    optimizers = {
+        'AdamW': _opt.AdamWOptimizer(model_inp, lr, betas, weight_decay),
+        'SGD': _opt.SGDOptimizer(model_inp, lr, momentum, weight_decay),
+        'RMSprop': _opt.RMSpropOptimizer(model_inp, lr, alpha, weight_decay)
+    }
+
+    optimizer_name = config["training"].get("optimizer", "AdamW")
+    optimizer_wrapper = optimizers.get(optimizer_name)
+    if optimizer_wrapper is None:
+        raise ValueError(f"Invalid optimizer: {optimizer_name}")
+    optimizer = optimizer_wrapper()
+
 
     if load_train_state is None:
         optimizer_ = optimizer
@@ -146,6 +145,13 @@ def trainer(
             print(f" Overriding learning rate with {override_lr}")
             for param_group in optimizer_.param_groups:
                 param_group['lr'] = float(override_lr)
+
+    #################################################################
+
+
+
+    validation = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=device)
+    C = Checkpoints()
 
     Train = Trainer(
         model_inp, 
@@ -190,5 +196,5 @@ def trainer(
     mlflow.end_run()
 
 if __name__ == "__main__":
-    trainer(model)
+    trainer()
 
