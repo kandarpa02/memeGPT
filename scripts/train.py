@@ -115,7 +115,7 @@ def trainer(
             base_model=model,
             optimizer=optimizer,
             scaler = temp_scaler,
-            model_path=load_model_checkpoint_
+            model_path=load_model_checkpoint_,
             train_state_path= load_train_state
         )
 
