@@ -98,7 +98,7 @@ C = Checkpoints()
 
 def trainer(
         model_inp,
-        mix_precision=config["training"].get("precision", True),
+        mix_precision=bool(config["training"].get("precision", True)),
         epochs=epochs,
         load_model_checkpoint_=config["training"].get("checkpoint_load"),
         load_train_state = config["training"]['train_state'],
