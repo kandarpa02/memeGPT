@@ -1,47 +1,44 @@
 import torch
-from transformers import pipeline, GenerationConfig
-from memeGPT.model.model import Model
-from memeGPT.tokenizer.tokenizer import text_tokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel, PeftConfig
 import sys
-import warnings
 
-warnings.filterwarnings("ignore")
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-model_name = sys.argv[1]
-wrapper = Model(model_name)
-tokenizer = text_tokenizer(model_name)()
-
-path = sys.argv[2]
-wrapper.load_weights(path, model_name)
-model = wrapper.model 
-model.eval()
-
-model.generation_config = GenerationConfig.from_pretrained(model_name)
-model.generation_config.pad_token_id = tokenizer.eos_token_id
-
-text_generator = pipeline(
-    "text-generation",
-    model=model,
-    tokenizer=tokenizer # Match quantization dtype
+model_name = "distilgpt2"         
+adapter_path = sys.argv[1]
+prompt = sys.argv[2]
+tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+base = AutoModelForCausalLM.from_pretrained(
+    model_name,            
+    device_map="auto"                  
 )
 
-prompt = f"prompt:{sys.argv[3]}\n:"
+model = PeftModel.from_pretrained(
+    base,
+    adapter_path,
+    is_trainable=False    
+)
+
+model.eval().to(device)
+
+inputs = tokenizer(
+    prompt,
+    return_tensors="pt",
+).to(device)
 
 with torch.inference_mode():
-    outputs = text_generator(
-        prompt,
+    out_ids = model.generate(
+        inputs.input_ids,
         max_new_tokens=50,
-        temperature=0.8,
+        temperature=0.7,
         top_k=40,
         top_p=0.95,
-        do_sample=True, 
-        num_return_sequences=1,
-        repetition_penalty=1.1 
+        do_sample=True,
+        repetition_penalty=1.1,
     )
 
-sys.stdout.write(f"{outputs[0]['generated_text']}")
-sys.stdout.flush()
+print(tokenizer.decode(out_ids[0], skip_special_tokens=True))
 
-# python generate.py --model_name <base_model> --weight_path <lora_adapters> --prompt "your text"
+
+# python <adapter_path> <prompt>
