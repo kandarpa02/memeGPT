@@ -101,7 +101,7 @@ def trainer(
         mix_precision=config["training"].get("precision", True),
         epochs=epochs,
         load_model_checkpoint_=config["training"].get("checkpoint_load"),
-        load_train_state = config["training"]['train_state']
+        load_train_state = config["training"]['train_state'],
         save_checkpoint_=config["training"].get("checkpoint_save")
     ):
 
