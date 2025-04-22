@@ -75,7 +75,7 @@ class T3nsorLoader(Dataset):
         self.current_chunk_id = -1
 
         for chunk_id, file in enumerate(self.chunk_files):
-            data = torch.load(file)
+            data = torch.load(file, weights_only=False)
             num_samples = data["input_ids"].shape[0]
             self.sample_index.extend([(chunk_id, i) for i in range(num_samples)])
 
