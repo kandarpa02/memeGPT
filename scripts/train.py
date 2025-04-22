@@ -118,7 +118,7 @@ def trainer(
         model_inp, optimizer_, loaded_scaler, epochs_cp, _val_loss = C.load_checkpoint(
             base_model=model,
             optimizer=optimizer,
-            scaler = temp_scaler
+            scaler = temp_scaler,
             path=load_checkpoint_
         )
 
