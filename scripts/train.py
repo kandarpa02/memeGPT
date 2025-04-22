@@ -108,7 +108,7 @@ def trainer(
     override_lr = config["training"].get("override_lr")
     override_opt = config["training"].get("override_optimizer")
 
-    temp_scaler = GradScaler(enabled=mix_precision)
+    temp_scaler = GradScaler()
 
     if load_model_checkpoint_ is None:
         model_inp = model
