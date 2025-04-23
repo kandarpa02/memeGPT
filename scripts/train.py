@@ -82,21 +82,21 @@ def trainer():
     optim_name   = config["training"].get("optimizer", 'AdamW')
 
     OPTIMIZERS = {
-        'AdamW':  _opt.AdamWOptimizer,
-        'SGD':    _opt.SGDOptimizer,
-        'RMSprop':_opt.RMSpropOptimizer,
+        'AdamW':  _opt.AdamWOptimizer(model, lr, betas, weight_decay),
+        'SGD':    _opt.SGDOptimizer(model, lr, momentum, weight_decay),
+        'RMSprop':_opt.RMSpropOptimizer(model, lr, alpha, weight_decay)
     }
-    OptimCls = OPTIMIZERS.get(optim_name)
-    if OptimCls is None:
+    Optim = OPTIMIZERS[config["training"]["optimizer"]]
+    if Optim is None:
         raise ValueError(f"Invalid optimizer: {optim_name}")
 
-    # instantiate fresh optimizer & scaler
-    if optim_name == 'AdamW':
-        optimizer = OptimCls(model, lr, betas, weight_decay)
-    elif optim_name == 'SGD':
-        optimizer = OptimCls(model, lr, momentum, weight_decay)
-    else:
-        optimizer = OptimCls(model, lr, alpha, weight_decay)
+    # # instantiate fresh optimizer & scaler
+    # if optim_name == 'AdamW':
+    #     optimizer = OptimCls(model, lr, betas, weight_decay)
+    # elif optim_name == 'SGD':
+    #     optimizer = OptimCls(model, lr, momentum, weight_decay)
+    # else:
+    #     optimizer = OptimCls(model, lr, alpha, weight_decay)
     scaler = GradScaler(enabled=mix_precision)
 
     # ----------------------------------------------------------------------------
