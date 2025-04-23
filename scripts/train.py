@@ -108,7 +108,7 @@ def trainer():
         # resume everything
         model, optimizer, scaler, start_epoch, last_val = C.load_checkpoint(
             base_model=model,
-            optimizer=optimizer,
+            optimizer=optimizer(),
             scaler=scaler,
             model_path=model_ckpt_path,
             train_state_path=train_state_path
