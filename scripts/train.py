@@ -162,7 +162,7 @@ def trainer(
             batch = {k: v.to(device) for k, v in batch.items()}
 
             Train.process(batch)
-            epoch_loss += Train.loss.item()
+            epoch_loss += Train.loss
 
             sys.stdout.write(
                 f"\rEpoch {epoch+1}/{epochs_cp + epochs} | Step {step}/{len(train_loader)}"
