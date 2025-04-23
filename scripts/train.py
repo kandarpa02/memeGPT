@@ -73,29 +73,52 @@ def trainer():
     model = model()  # instantiate the nn.Module
 
     # ----------------------------------------------------------------------------
-    # 2) Load checkpoints: either model only or full train state
+    # Prepare fresh optimizer & scaler (for possible resume)
+    lr           = float(config["training"].get("lr", 1e-4))
+    alpha        = float(config["training"].get("alpha", 0.99))
+    betas        = tuple(config["training"].get("betas", [0.9, 0.999]))
+    weight_decay = float(config["training"].get("weight_decay", 0.01))
+    momentum     = float(config["training"].get("momentum", 0.9))
+    optim_name   = config["training"].get("optimizer", 'AdamW')
+
+    OPTIMIZERS = {
+        'AdamW':  _opt.AdamWOptimizer,
+        'SGD':    _opt.SGDOptimizer,
+        'RMSprop':_opt.RMSpropOptimizer,
+    }
+    OptimCls = OPTIMIZERS.get(optim_name)
+    if OptimCls is None:
+        raise ValueError(f"Invalid optimizer: {optim_name}")
+
+    # instantiate fresh optimizer & scaler
+    if optim_name == 'AdamW':
+        optimizer = OptimCls(model, lr, betas, weight_decay)
+    elif optim_name == 'SGD':
+        optimizer = OptimCls(model, lr, momentum, weight_decay)
+    else:
+        optimizer = OptimCls(model, lr, alpha, weight_decay)
+    scaler = GradScaler(enabled=mix_precision)
+
+    # ----------------------------------------------------------------------------
+    # 2) Load checkpoints: full train state or model-only
     start_epoch = 0
     last_val    = None
 
     if model_ckpt_path and train_state_path:
-        # load model + optimizer + scaler + epoch + val_loss
+        # resume everything
         model, optimizer, scaler, start_epoch, last_val = C.load_checkpoint(
             base_model=model,
-            optimizer=None,
-            scaler=None,
+            optimizer=optimizer,
+            scaler=scaler,
             model_path=model_ckpt_path,
             train_state_path=train_state_path
         )
     elif model_ckpt_path:
-        # load only model weights
-        ckpt = torch.load(model_ckpt_path, map_location=device)
-        model.load_state_dict(ckpt['model'])
-        # optimizer & scaler will be fresh
-        optimizer = None
-        scaler    = None
-    else:
-        optimizer = None
-        scaler    = None
+        # load only model weights + LoRA adapters
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, model_ckpt_path)
+        # optimizer & scaler remain fresh
+    # else: fresh train
 
     # ----------------------------------------------------------------------------
     # 3) Wrap & move model
@@ -104,39 +127,7 @@ def trainer():
     model = model.to(device)
 
     # ----------------------------------------------------------------------------
-    # 4) Instantiate optimizer on the correct model
-    lr           = float(config["training"].get("lr", 1e-4))
-    alpha        = float(config["training"].get("alpha", 0.99))
-    betas        = tuple(config["training"].get("betas", [0.9, 0.999]))
-    weight_decay = float(config["training"].get("weight_decay", 0.01))
-    momentum     = float(config["training"].get("momentum", 0.9))
-
-    OPTIMIZERS = {
-        'AdamW':  _opt.AdamWOptimizer,
-        'SGD':    _opt.SGDOptimizer,
-        'RMSprop':_opt.RMSpropOptimizer,
-    }
-    optim_name = config["training"].get("optimizer", 'AdamW')
-    OptimCls   = OPTIMIZERS.get(optim_name)
-    if OptimCls is None:
-        raise ValueError(f"Invalid optimizer: {optim_name}")
-
-    # Create optimizer if not loaded by checkpoint
-    if optimizer is None:
-        if optim_name == 'AdamW':
-            optimizer = OptimCls(model, lr, betas, weight_decay)
-        elif optim_name == 'SGD':
-            optimizer = OptimCls(model, lr, momentum, weight_decay)
-        else:
-            optimizer = OptimCls(model, lr, alpha, weight_decay)
-
-    # ----------------------------------------------------------------------------
-    # 5) Initialize or load GradScaler
-    if scaler is None:
-        scaler = GradScaler(enabled=mix_precision)
-
-    # ----------------------------------------------------------------------------
-    # 6) Prepare Trainer & Validation
+    # 4) Prepare Trainer & Validation
     validation  = Validation(model, val_data=val_loader, tokenizer=tokenizer, device=device)
     trainer_obj = Trainer(
         model,
@@ -147,7 +138,7 @@ def trainer():
     )
 
     # ----------------------------------------------------------------------------
-    # 7) Training loop
+    # 5) Training loop
     for epoch in range(start_epoch, start_epoch + epochs):
         t0, total_loss = time.time(), 0.0
         for batch in train_loader:
@@ -158,7 +149,8 @@ def trainer():
         avg_train_loss = total_loss / len(train_loader)
         val_loss       = validation.val_loss()
 
-        # 8) Save checkpoint (model, optimizer, scaler, epoch, val_loss)
+        # ----------------------------------------------------------------------------
+        # 6) Save checkpoint
         if save_checkpoint:
             C.save_checkpoint(
                 model=model,
@@ -174,7 +166,7 @@ def trainer():
               f"Time: {time.time()-t0:.2f}s")
 
     # ----------------------------------------------------------------------------
-    # 9) Finalize MLflow
+    # 7) Finalize MLflow
     mlflow.pytorch.log_model(model, "model")
     mlflow.end_run()
 
